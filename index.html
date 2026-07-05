@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Layover">
+<meta name="theme-color" content="#0C1120">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>Layover — Survival Phrase Trainer</title>
+<style>
+  /* ============ CABIN-NIGHT TOKEN SYSTEM ============ */
+  :root{
+    --bg:#0C1120;          /* deep cabin night */
+    --panel:#161D31;
+    --panel-2:#1D2540;
+    --line:#28324F;
+    --ink:#F4F6FC;
+    --muted:#8B94AF;
+    --amber:#FFC466;       /* reading-light amber for score */
+    --good:#3DDC97;
+    --bad:#FF6B6B;
+    --accent:#FF6A55;      /* swapped per language */
+    --accent-soft:rgba(255,106,85,.14);
+    --radius:18px;
+    --sat:env(safe-area-inset-top,0px);
+    --sab:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    display:flex;flex-direction:column;
+    min-height:100dvh;
+    user-select:none;-webkit-user-select:none;
+    touch-action:manipulation;
+    overflow:hidden;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;touch-action:manipulation}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+  /* ============ HEADER ============ */
+  header{
+    padding:calc(10px + var(--sat)) 16px 10px;
+    background:linear-gradient(180deg,#101730 0%,var(--bg) 100%);
+    border-bottom:1px solid var(--line);
+    flex:none;
+  }
+  .hdr-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .brand{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .brand b{color:var(--accent)}
+  .stats{display:flex;gap:8px;align-items:center}
+  .pill{
+    display:flex;align-items:center;gap:5px;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:6px 12px;
+    font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+  }
+  .pill .lbl{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .pill .val{color:var(--amber)}
+  .pill.streak .val{color:var(--ink)}
+  .pill.streak.hot .val{color:var(--accent)}
+  .icon-btn{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:var(--muted);flex:none;
+  }
+  .icon-btn:active{transform:scale(.94)}
+
+  /* ============ LANGUAGE + MODULE SELECTORS ============ */
+  .lang-tabs{display:flex;gap:8px;margin-top:12px}
+  .lang-tab{
+    flex:1;padding:10px 4px;border-radius:14px;
+    background:var(--panel);border:1.5px solid var(--line);
+    text-align:center;transition:border-color .15s,background .15s;
+  }
+  .lang-tab .glyph{display:block;font-size:20px;line-height:1.2}
+  .lang-tab .name{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-top:2px}
+  .lang-tab.active{background:var(--accent-soft);border-color:var(--accent)}
+  .lang-tab.active .name{color:var(--ink)}
+  .modules{
+    display:flex;gap:8px;margin-top:10px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;padding-bottom:2px;
+  }
+  .modules::-webkit-scrollbar{display:none}
+  .mod-chip{
+    flex:none;padding:8px 14px;border-radius:999px;
+    background:var(--panel);border:1.5px solid var(--line);
+    font-size:13px;font-weight:600;color:var(--muted);
+    display:flex;align-items:center;gap:7px;transition:border-color .15s;
+  }
+  .mod-chip.active{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+  .mod-chip .count{font-size:11px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+
+  /* ============ MAIN QUESTION AREA ============ */
+  main{
+    flex:1;display:flex;flex-direction:column;
+    padding:14px 16px 8px;min-height:0;overflow:hidden;
+  }
+  .card{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:
+      radial-gradient(60% 55% at 50% 30%, var(--accent-soft) 0%, transparent 70%),
+      var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 16px;position:relative;min-height:0;text-align:center;
+  }
+  .prompt-kind{
+    font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:10px;
+  }
+  .prompt-main{
+    font-weight:700;line-height:1.15;
+    font-size:clamp(26px,9.5vw,52px);
+    overflow-wrap:anywhere;
+  }
+  .prompt-main.native{font-size:clamp(34px,12vw,64px)}
+  .prompt-sub{margin-top:8px;font-size:15px;color:var(--muted)}
+  .mnemo{
+    margin-top:12px;max-width:36ch;
+    font-size:14px;line-height:1.5;font-style:italic;
+    color:var(--amber);
+  }
+  .mnemo::before{content:"💡 ";font-style:normal}
+  .btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+  .speak-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    border-radius:999px;padding:11px 20px;
+    font-size:14px;font-weight:700;color:var(--ink);
+  }
+  .speak-btn:active{transform:scale(.96);border-color:var(--accent)}
+  .speak-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .speak-btn.speaking .dot{animation:pulse .5s infinite alternate}
+  @keyframes pulse{from{transform:scale(.7);opacity:.5}to{transform:scale(1.3);opacity:1}}
+
+  /* boarding-pass perforation */
+  .perf{
+    flex:none;height:14px;margin:0 26px;position:relative;
+  }
+  .perf::before{
+    content:"";position:absolute;left:0;right:0;top:50%;
+    border-top:2px dashed var(--line);
+  }
+
+  /* ============ FEEDBACK BANNER ============ */
+  .feedback{
+    flex:none;min-height:44px;display:flex;align-items:center;justify-content:center;
+    gap:8px;font-size:14px;font-weight:700;padding:4px 12px;text-align:center;
+    color:var(--muted);
+  }
+  .feedback.good{color:var(--good)}
+  .feedback.bad{color:var(--bad)}
+  .feedback .master{color:var(--amber)}
+
+  /* ============ ANSWER GRID ============ */
+  .answers{
+    flex:none;
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    padding:0 16px calc(14px + var(--sab));
+  }
+  .ans{
+    min-height:72px;padding:12px 10px;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    font-size:clamp(15px,4.6vw,20px);font-weight:700;line-height:1.25;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    overflow-wrap:anywhere;transition:transform .08s,border-color .12s,background .12s;
+  }
+  .ans.native-text{font-size:clamp(18px,6vw,26px)}
+  .ans:active{transform:scale(.97)}
+  .ans.correct{background:rgba(61,220,151,.16);border-color:var(--good);color:var(--good)}
+  .ans.wrong{background:rgba(255,107,107,.14);border-color:var(--bad);color:var(--bad)}
+  .ans.dim{opacity:.38}
+  .ans:disabled{cursor:default}
+  @media (max-height:640px){.ans{min-height:60px}}
+
+  /* shake on wrong */
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .shake{animation:shake .22s ease-in-out 2}
+
+  /* ============ SETTINGS SHEET ============ */
+  .sheet-veil{
+    position:fixed;inset:0;background:rgba(5,8,18,.7);
+    display:none;align-items:flex-end;z-index:50;
+  }
+  .sheet-veil.open{display:flex}
+  .sheet{
+    width:100%;background:var(--panel);
+    border-radius:22px 22px 0 0;border-top:1px solid var(--line);
+    padding:20px 20px calc(24px + var(--sab));
+  }
+  .sheet h2{font-size:17px;margin-bottom:4px}
+  .sheet p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+  .sheet .row{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .sheet .row b{color:var(--amber);font-variant-numeric:tabular-nums}
+  .sheet-btn{
+    width:100%;margin-top:14px;padding:14px;border-radius:14px;
+    font-size:15px;font-weight:700;text-align:center;
+  }
+  .sheet-btn.danger{background:rgba(255,107,107,.12);border:1.5px solid var(--bad);color:var(--bad)}
+  .sheet-btn.plain{background:var(--panel-2);border:1.5px solid var(--line)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-row">
+    <div class="brand">LAY<b>OVER</b></div>
+    <div class="stats">
+      <div class="pill"><span class="lbl">Score</span><span class="val" id="scoreVal">0</span></div>
+      <div class="pill streak" id="streakPill"><span>🔥</span><span class="val" id="streakVal">0</span></div>
+      <button class="icon-btn" id="settingsBtn" aria-label="Settings and progress">⚙︎</button>
+    </div>
+  </div>
+  <div class="lang-tabs" id="langTabs"></div>
+  <div class="modules" id="moduleChips"></div>
+</header>
+
+<main>
+  <div class="card" id="card">
+    <div class="prompt-kind" id="promptKind">Translate</div>
+    <div class="prompt-main" id="promptMain">…</div>
+    <div class="prompt-sub" id="promptSub"></div>
+    <div class="mnemo" id="mnemo" hidden></div>
+    <div class="btn-row">
+      <button class="speak-btn" id="speakBtn"><span class="dot"></span><span id="speakLabel">Speak</span></button>
+      <button class="speak-btn" id="hintBtn">💡 Hint</button>
+    </div>
+  </div>
+  <div class="perf"></div>
+  <div class="feedback" id="feedback">Tap the correct answer below</div>
+</main>
+
+<div class="answers" id="answers"></div>
+
+<div class="sheet-veil" id="sheetVeil">
+  <div class="sheet" role="dialog" aria-label="Progress and settings">
+    <h2>Your trip so far</h2>
+    <p>Progress saves automatically on this device — close the file, land, reopen, and pick up where you left off.</p>
+    <p><b style="color:var(--ink)">No sound from Speak?</b> ① Flip the iPhone ring/silent switch to ring — Safari speech respects it. ② Turn the volume up. ③ For offline use, download voices before your flight: Settings → Accessibility → Spoken Content → Voices → add a Chinese, Korean, and Japanese voice.</p>
+    <div class="row"><span>Total score</span><b id="stScore">0</b></div>
+    <div class="row"><span>Best streak</span><b id="stBest">0</b></div>
+    <div class="row"><span>Words mastered</span><b id="stMastered">0</b></div>
+    <div class="row"><span>Questions answered</span><b id="stAnswered">0</b></div>
+    <button class="sheet-btn danger" id="resetBtn">Reset all progress</button>
+    <button class="sheet-btn plain" id="closeSheet">Back to the game</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   DICTIONARY — {en, native, roman} grouped by language and module.
+   Modules: ess (Essentials), dir (Direction & Transit),
+            food (Food & Dining), num (Numbers & Emergency)
+===================================================================== */
+const MODULES = [
+  {id:"ess",  label:"Essentials"},
+  {id:"dir",  label:"Direction & Transit"},
+  {id:"food", label:"Food & Dining"},
+  {id:"num",  label:"Numbers & Emergency"}
+];
+
+const LANGS = [
+  {id:"zh", name:"Chinese",  glyph:"中", locale:"zh-CN", accent:"#FF6A55", romanLabel:"Pinyin"},
+  {id:"ko", name:"Korean",   glyph:"한", locale:"ko-KR", accent:"#5EA2FF", romanLabel:"Romanization"},
+  {id:"ja", name:"Japanese", glyph:"日", locale:"ja-JP", accent:"#FF8FB1", romanLabel:"Romaji"}
+];
+
+const DICT = {
+zh:{
+ ess:[
+  {en:"Hello",native:"你好",roman:"nǐ hǎo",mn:"Knee-HOW: bow so low your KNEE says 'HOW do you do'"},
+  {en:"Thank you",native:"谢谢",roman:"xièxie",mn:"'shyeh-shyeh' — two shy little 'yeah's of thanks"},
+  {en:"Yes",native:"是",roman:"shì",mn:"'shir' — 'SURE!' = yes"},
+  {en:"No",native:"不是",roman:"bú shì",mn:"bú = not + shì = yes → 'boo, not sure' = no"},
+  {en:"Excuse me",native:"不好意思",roman:"bù hǎo yìsi",mn:"'boo-how-EE-suh' — 'boo, how embarrassing!' = excuse me"},
+  {en:"Sorry",native:"对不起",roman:"duìbuqǐ",mn:"'dway-boo-CHEE' — I blocked the WAY, sorry!"},
+  {en:"Goodbye",native:"再见",roman:"zàijiàn",mn:"zài = again, jiàn = see — 'see you aGAIN'"},
+  {en:"Please",native:"请",roman:"qǐng",mn:"'ching!' — ring a polite little bell before asking"},
+  {en:"You're welcome",native:"不客气",roman:"bú kèqi",mn:"'boo-kuh-chee' — 'no need for courtesy' = you're welcome"},
+  {en:"I don't understand",native:"我不懂",roman:"wǒ bù dǒng",mn:"'wo boo DONG' — the bell went DONG but I didn't get it"},
+  {en:"Do you speak English?",native:"你会说英语吗？",roman:"nǐ huì shuō yīngyǔ ma",mn:"yīngyǔ ('ying-yoo') sounds like ENGlish"},
+  {en:"Good morning",native:"早上好",roman:"zǎoshang hǎo",mn:"zǎo = 'dzow' — the sun DAWNs = morning"},
+  {en:"Nice to meet you",native:"很高兴认识你",roman:"hěn gāoxìng rènshi nǐ",mn:"gāoxìng = 'gow-shing' — GLOWING with joy to meet you"},
+  {en:"My name is…",native:"我叫…",roman:"wǒ jiào…",mn:"'wo JYAO' — 'Yo! I'm called…'"},
+  {en:"OK / Good",native:"好",roman:"hǎo",mn:"hǎo = 'HOW' — 'HOW good!' = OK / good"},
+  {en:"No, thank you",native:"不用了，谢谢",roman:"bú yòng le, xièxie",mn:"bú yòng = 'no use' — no need, thanks"},
+  {en:"One moment",native:"等一下",roman:"děng yíxià",mn:"'dung-ee-SHYA' — hang on a sec, děng = wait"},
+  {en:"I don't speak Chinese",native:"我不会说中文",roman:"wǒ bú huì shuō zhōngwén",mn:"zhōngwén = 'JONG-wen' = the Chinese language"}
+ ],
+ dir:[
+  {en:"Where is…?",native:"…在哪里？",roman:"…zài nǎlǐ",mn:"'dzai-NAH-lee' — 'it's where, NAH?'"},
+  {en:"Airport",native:"机场",roman:"jīchǎng",mn:"'jee-CHANG' — JEts CHANGe planes at the airport"},
+  {en:"Train station",native:"火车站",roman:"huǒchēzhàn",mn:"huǒ = fire + chē = cart — the 'fire-cart stop' = train station"},
+  {en:"Subway",native:"地铁",roman:"dìtiě",mn:"dì = ground + tiě = iron — 'ground iron' = subway"},
+  {en:"Left",native:"左",roman:"zuǒ",mn:"'dzwo' — ZOrro slashes to the LEFT"},
+  {en:"Right",native:"右",roman:"yòu",mn:"'yo!' — 'YO, turn right!'"},
+  {en:"Go straight",native:"直走",roman:"zhí zǒu",mn:"'jir-DZOH' — 'JUST GO' straight"},
+  {en:"Taxi",native:"出租车",roman:"chūzūchē",mn:"'choo-dzoo-CHEH' — the choo-choo car for hire = taxi"},
+  {en:"Bus",native:"公共汽车",roman:"gōnggòng qìchē",mn:"'GONG-GONG' — the gong-gong bus everyone shares"},
+  {en:"Hotel",native:"酒店",roman:"jiǔdiàn",mn:"jiǔ = wine + diàn = shop — old inns served wine = hotel"},
+  {en:"Toilet",native:"厕所",roman:"cèsuǒ",mn:"'tsuh-SWAW' — the 'so-so' room you still really need"},
+  {en:"Ticket",native:"票",roman:"piào",mn:"'PYOW!' — ticket stamped pyow!"},
+  {en:"Stop here",native:"停这里",roman:"tíng zhèlǐ",mn:"'TING!' — the bell rings ting = stop here"},
+  {en:"Entrance",native:"入口",roman:"rùkǒu",mn:"rù = enter + kǒu = mouth — the mouth you walk INTO"},
+  {en:"Exit",native:"出口",roman:"chūkǒu",mn:"chū = out + kǒu = mouth — the mouth that spits you OUT"},
+  {en:"I'm lost",native:"我迷路了",roman:"wǒ mílù le",mn:"mílù = 'ME-LOO' — 'me? lost, look!'"},
+  {en:"Here",native:"这里",roman:"zhèlǐ",mn:"'juh-LEE' — 'JUST here'"},
+  {en:"Map",native:"地图",roman:"dìtú",mn:"'dee-TOO' — 'D2' — coordinates on the map"}
+ ],
+ food:[
+  {en:"Water",native:"水",roman:"shuǐ",mn:"'shway' — water SWAYs in the glass"},
+  {en:"Delicious",native:"好吃",roman:"hǎochī",mn:"hǎo = good + chī = eat — 'HOW CHEWY-good!'"},
+  {en:"The bill, please",native:"买单",roman:"mǎidān",mn:"'MY-DAN' — 'MY DAMage, please' = the bill"},
+  {en:"This one",native:"这个",roman:"zhège",mn:"'JUH-guh' — point and grunt 'this-guh'"},
+  {en:"Tea",native:"茶",roman:"chá",mn:"chá = CHAi — the same tea word half the world uses"},
+  {en:"Beer",native:"啤酒",roman:"píjiǔ",mn:"'pee-JYO' — 'P.J.' orders the beer"},
+  {en:"Rice",native:"米饭",roman:"mǐfàn",mn:"'mee-FAN' — 'me? a FAN of rice!'"},
+  {en:"Noodles",native:"面条",roman:"miàntiáo",mn:"miàn as in raMEN / lo MEIN — noodles"},
+  {en:"Coffee",native:"咖啡",roman:"kāfēi",mn:"kāfēi ≈ coffee — nearly the same sound"},
+  {en:"Menu",native:"菜单",roman:"càidān",mn:"'tsai-DAN' — 'sigh, DAN, pass the menu'"},
+  {en:"Not spicy",native:"不辣",roman:"bú là",mn:"'boo-LAH' — say BOO to the là (heat)"},
+  {en:"Cheers!",native:"干杯",roman:"gānbēi",mn:"gān = dry + bēi = cup — 'DRY the cup!' = cheers"},
+  {en:"I'm vegetarian",native:"我吃素",roman:"wǒ chī sù",mn:"chī sù = 'chew SOO' — I chew veggies only"},
+  {en:"Chopsticks",native:"筷子",roman:"kuàizi",mn:"kuài = quick — 'QUICK-sticks' = chopsticks"},
+  {en:"One more, please",native:"再来一个",roman:"zài lái yí ge",mn:"zài = again + lái = come — 'come AGAIN, one more!'"},
+  {en:"Take-out",native:"打包",roman:"dǎbāo",mn:"'da-BAO' — 'the BAG!' = pack it to go"},
+  {en:"Can I pay by card?",native:"可以刷卡吗？",roman:"kěyǐ shuākǎ ma",mn:"shuākǎ = 'SHWA-ka' — SWipe the KArd?"},
+  {en:"Spicy",native:"辣",roman:"là",mn:"là = LAva on the tongue = spicy"}
+ ],
+ num:[
+  {en:"One (1)",native:"一",roman:"yī",mn:"yī = 'ee!' — ONE stroke, one squeak"},
+  {en:"Two (2)",native:"二",roman:"èr",mn:"èr = 'are' — 'there ARE two'"},
+  {en:"Three (3)",native:"三",roman:"sān",mn:"sān — a SANdwich has three layers"},
+  {en:"Four (4)",native:"四",roman:"sì",mn:"sì = 'ssss' — a hissing snake curled like a 4"},
+  {en:"Five (5)",native:"五",roman:"wǔ",mn:"wǔ = 'WOO!' — high-FIVE!"},
+  {en:"Six (6)",native:"六",roman:"liù",mn:"liù = 'lyo' — LEO the lion turns six"},
+  {en:"Seven (7)",native:"七",roman:"qī",mn:"qī = 'chee' — lucky seven says 'CHEEse!'"},
+  {en:"Eight (8)",native:"八",roman:"bā",mn:"bā = 'baa' — eight sheep say baa"},
+  {en:"Nine (9)",native:"九",roman:"jiǔ",mn:"jiǔ = 'jyo' — JOE is on cloud nine"},
+  {en:"Ten (10)",native:"十",roman:"shí",mn:"shí = 'shir' — 'SURE, that's a perfect 10'"},
+  {en:"Help!",native:"救命！",roman:"jiùmìng",mn:"'JYO-MING!' — 'JOE! ME! Help!'"},
+  {en:"How much?",native:"多少钱？",roman:"duōshao qián",mn:"qián = 'chyen' ≈ CHAnge — how much change?"},
+  {en:"Too expensive",native:"太贵了",roman:"tài guì le",mn:"'tie-GWAY' — my money flew aWAY = too expensive"},
+  {en:"Police",native:"警察",roman:"jǐngchá",mn:"'JING-chah' — the badge goes JING! = police"},
+  {en:"Hospital",native:"医院",roman:"yīyuàn",mn:"'ee-YWEN' — 'ER — you? when?' = hospital"},
+  {en:"Doctor",native:"医生",roman:"yīshēng",mn:"yī = medicine — the 'ee-SHUNG' who heals = doctor"},
+  {en:"One hundred (100)",native:"百",roman:"bǎi",mn:"bǎi = 'BUY' — buy a hundred!"},
+  {en:"Passport",native:"护照",roman:"hùzhào",mn:"'hoo-JAO' — 'WHO? SHOW me!' = passport"},
+  {en:"Cheaper, please",native:"便宜一点",roman:"piányi yìdiǎn",mn:"piányi = 'PYEN-yee' — a PENNY cheaper, please"},
+  {en:"Pharmacy",native:"药店",roman:"yàodiàn",mn:"yào = 'YOW' (medicine) + diàn = shop — the YOW-shop = pharmacy"}
+ ]
+},
+ko:{
+ ess:[
+  {en:"Hello",native:"안녕하세요",roman:"annyeonghaseyo",mn:"AHN-nyong: 'stay ON-YOUNG!' — the wish inside hello"},
+  {en:"Thank you",native:"감사합니다",roman:"gamsahamnida",mn:"GAHM-sah — 'GUM, sir?' offered as thanks"},
+  {en:"Yes",native:"네",roman:"ne",mn:"ne = 'neh' — a nodding 'yeah' = yes"},
+  {en:"No",native:"아니요",roman:"aniyo",mn:"'ah-NEE-yo' — 'ah, NO, yo'"},
+  {en:"Excuse me",native:"실례합니다",roman:"sillyehamnida",mn:"'shil-LEH' — 'how SILLY of me' = excuse me"},
+  {en:"Sorry",native:"죄송합니다",roman:"joesonghamnida",mn:"'chwe-SONG' — singing a SORRY SONG"},
+  {en:"Goodbye",native:"안녕히 가세요",roman:"annyeonghi gaseyo",mn:"gaseyo = 'GO-se-yo' — 'GO well' (they leave, you stay)"},
+  {en:"Please (give me)",native:"주세요",roman:"juseyo",mn:"'ju-SE-yo' — 'JUICE, yo!' = please give me"},
+  {en:"It's okay",native:"괜찮아요",roman:"gwaenchanayo",mn:"'gwen-CHAN-a-yo' — 'Gwen's CHILL' = it's okay"},
+  {en:"I don't understand",native:"모르겠어요",roman:"moreugesseoyo",mn:"'mo-reu-ge' — 'MORE? uh…' = I don't understand"},
+  {en:"Do you speak English?",native:"영어 할 수 있어요?",roman:"yeongeo hal su isseoyo",mn:"yeongeo = 'YOUNG-uh' ≈ English"},
+  {en:"Nice to meet you",native:"반갑습니다",roman:"bangapseumnida",mn:"'BAN-gap' — BANG! the gap between us closed = glad to meet you"},
+  {en:"OK / Good",native:"좋아요",roman:"joayo",mn:"'JOH-a-yo' ≈ 'JOY-a-yo' — Korea's 'like' button = good!"},
+  {en:"No, thank you",native:"아니요, 괜찮아요",roman:"aniyo, gwaenchanayo",mn:"'ah-NO, I'm CHILL' — no thanks"},
+  {en:"One moment",native:"잠시만요",roman:"jamsimanyo",mn:"'JAM-si-man' — 'JAM the brakes a SECond, man'"},
+  {en:"I don't speak Korean",native:"한국어 못해요",roman:"hangugeo motaeyo",mn:"mot = 'MOTE' = can't — can't do Korean"}
+ ],
+ dir:[
+  {en:"Where is…?",native:"…어디예요?",roman:"…eodiyeyo",mn:"'AW-dee-ye-yo' — 'where's my AUDI?' = where is…?"},
+  {en:"Airport",native:"공항",roman:"gonghang",mn:"'gong-HANG' — planes HANG around the GONG-hall = airport"},
+  {en:"Station",native:"역",roman:"yeok",mn:"yeok = 'yuhk' — trains YOKed together at the station"},
+  {en:"Subway",native:"지하철",roman:"jihacheol",mn:"jiha = underground + cheol = iron — 'underground iron'"},
+  {en:"Left",native:"왼쪽",roman:"oenjjok",mn:"oen ≈ 'WHEN' — 'WHEN in doubt, go left'"},
+  {en:"Right",native:"오른쪽",roman:"oreunjjok",mn:"'o-REUN' — 'Oh, RUN right!'"},
+  {en:"Go straight",native:"직진",roman:"jikjin",mn:"'JIK-jin' — 'JEEP, GO!' straight ahead"},
+  {en:"Taxi",native:"택시",roman:"taeksi",mn:"taeksi = taxi, said Korean-style"},
+  {en:"Bus",native:"버스",roman:"beoseu",mn:"beoseu = bus — 'buh-suh'"},
+  {en:"Hotel",native:"호텔",roman:"hotel",mn:"hotel is hotel — easiest word of the day"},
+  {en:"Toilet",native:"화장실",roman:"hwajangsil",mn:"hwajang = makeup + sil = room — the powder room"},
+  {en:"Ticket",native:"표",roman:"pyo",mn:"pyo — ticket stamped 'PYOW'"},
+  {en:"Stop here, please",native:"여기서 세워주세요",roman:"yeogiseo sewojuseyo",mn:"sewo = 'SAY WHOA' — say whoa, driver = stop here"},
+  {en:"Entrance",native:"입구",roman:"ipgu",mn:"ip = mouth — 'IN-goo' = entrance"},
+  {en:"Exit",native:"출구",roman:"chulgu",mn:"'CHURN out' through the chulgu = exit (ip in, chul out)"},
+  {en:"I'm lost",native:"길을 잃었어요",roman:"gireul ireosseoyo",mn:"gil = road — 'the GILded road… I lost it'"},
+  {en:"Here",native:"여기",roman:"yeogi",mn:"'YO, GUY — over here!' = here"},
+  {en:"Map",native:"지도",roman:"jido",mn:"'GEE-doh' — GEO-dough = map"}
+ ],
+ food:[
+  {en:"Water",native:"물",roman:"mul",mn:"mul rhymes with 'pool' — water"},
+  {en:"Delicious",native:"맛있어요",roman:"masisseoyo",mn:"'ma-SHI-sso' — 'MA, SEE? SO tasty!'"},
+  {en:"The bill, please",native:"계산서 주세요",roman:"gyesanseo juseyo",mn:"gyesan = 'GAY-san' = calculation — 'the calc sheet, please'"},
+  {en:"This one",native:"이거",roman:"igeo",mn:"'i-GEO' — 'EAGER for THIS one'"},
+  {en:"Tea",native:"차",roman:"cha",mn:"cha = CHAi — tea, same family as China's chá"},
+  {en:"Beer",native:"맥주",roman:"maekju",mn:"'MAEK-ju' — 'MAKE JUice? No — make it a beer'"},
+  {en:"Rice / meal",native:"밥",roman:"bap",mn:"bap — rice goes BOP into the bowl"},
+  {en:"Noodles",native:"국수",roman:"guksu",mn:"'GUK-su' — noodles you GOOK-slurp"},
+  {en:"Coffee",native:"커피",roman:"keopi",mn:"keopi = coffee with a Korean accent"},
+  {en:"Menu",native:"메뉴",roman:"menyu",mn:"menyu = menu"},
+  {en:"Not spicy, please",native:"안 맵게 해주세요",roman:"an maepge haejuseyo",mn:"maep = spicy — 'UN-MAP the heat, please'"},
+  {en:"Cheers!",native:"건배",roman:"geonbae",mn:"'GUN-bae' — 'GONE, bae!' — glass emptied = cheers"},
+  {en:"Chopsticks",native:"젓가락",roman:"jeotgarak",mn:"'jeot-GA-rak' — chopsticks CLACK-garak"},
+  {en:"I ate well (thanks)",native:"잘 먹었습니다",roman:"jal meogeotseumnida",mn:"jal = well — 'JOLLY well eaten' = thanks for the meal"},
+  {en:"One more, please",native:"하나 더 주세요",roman:"hana deo juseyo",mn:"hana = one — 'HANA, DO it again' = one more"},
+  {en:"Take-out, please",native:"포장해주세요",roman:"pojanghaejuseyo",mn:"'PO-jang' — POUCH it up, John = wrap to go"},
+  {en:"Can I pay by card?",native:"카드 돼요?",roman:"kadeu dwaeyo",mn:"'card DOABLE?' — can I pay by card?"},
+  {en:"Spicy",native:"매워요",roman:"maewoyo",mn:"'mae-WOah-yo!' — spicy!"}
+ ],
+ num:[
+  {en:"One (1)",native:"일",roman:"il",mn:"il = 'eel' — one slippery eel"},
+  {en:"Two (2)",native:"이",roman:"i",mn:"i = 'ee!' — twins squeal — two"},
+  {en:"Three (3)",native:"삼",roman:"sam",mn:"SAM has three letters — three"},
+  {en:"Four (4)",native:"사",roman:"sa",mn:"sa = 'saw' — SAW the log into four"},
+  {en:"Five (5)",native:"오",roman:"o",mn:"o = 'OH!' — high-five!"},
+  {en:"Six (6)",native:"육",roman:"yuk",mn:"yuk = 'YUCK' — six slimy bugs"},
+  {en:"Seven (7)",native:"칠",roman:"chil",mn:"chil — 'CHILL at the 7-Eleven' = seven"},
+  {en:"Eight (8)",native:"팔",roman:"pal",mn:"pal — your eight-armed octopus PAL"},
+  {en:"Nine (9)",native:"구",roman:"gu",mn:"gu = 'goo' — a gooey cat with nine lives"},
+  {en:"Ten (10)",native:"십",roman:"sip",mn:"sip — take TEN small sips"},
+  {en:"Help!",native:"도와주세요!",roman:"dowajuseyo",mn:"'DO-WAve at me — help!'"},
+  {en:"How much?",native:"얼마예요?",roman:"eolmayeyo",mn:"'ALL MA money?!' = how much?"},
+  {en:"Too expensive",native:"너무 비싸요",roman:"neomu bissayo",mn:"bissa = 'BIG SIGH' — too expensive"},
+  {en:"Police",native:"경찰",roman:"gyeongchal",mn:"'gyeong-CHAL' — GONG! CHARGE! = police"},
+  {en:"Hospital",native:"병원",roman:"byeongwon",mn:"'BEING WON back to health' = hospital"},
+  {en:"Doctor",native:"의사",roman:"uisa",mn:"'WE, SAved' — by the doctor"},
+  {en:"One hundred (100)",native:"백",roman:"baek",mn:"baek = 'BAKE' — bake 100 cookies"},
+  {en:"Passport",native:"여권",roman:"yeogwon",mn:"'YOU GOin'? Show the yeogwon' = passport"},
+  {en:"Cheaper, please",native:"깎아주세요",roman:"kkakkajuseyo",mn:"'KKAK-KKA' — the sound of CUT-CUTting the price"},
+  {en:"Pharmacy",native:"약국",roman:"yakguk",mn:"yak = medicine — the YAK-shack = pharmacy"}
+ ]
+},
+ja:{
+ ess:[
+  {en:"Hello",native:"こんにちは",roman:"konnichiwa",mn:"'kon-NEE-chee-wah' — CORN and CHEESE? WAh, hello!"},
+  {en:"Thank you",native:"ありがとう",roman:"arigatou",mn:"'ah-ree-GAH-toh' — the polite ALLIGATOR says thanks"},
+  {en:"Yes",native:"はい",roman:"hai",mn:"hai = 'HIGH' — thumbs HIGH = yes"},
+  {en:"No",native:"いいえ",roman:"iie",mn:"'ee-EH?' — a doubtful 'ee-eh' = no"},
+  {en:"Excuse me",native:"すみません",roman:"sumimasen",mn:"'soo-mee-mah-sen' — 'SUE ME? MA, SEND apologies!'"},
+  {en:"Sorry",native:"ごめんなさい",roman:"gomen nasai",mn:"'GO, MEN, SAY sorry' = gomen nasai"},
+  {en:"Goodbye",native:"さようなら",roman:"sayounara",mn:"the famous goodbye — 'SAY-oh-NARA, see ya in Nara'"},
+  {en:"Please",native:"お願いします",roman:"onegai shimasu",mn:"'oh-neh-GAI' — 'oh, I NEED it, GUY — please'"},
+  {en:"You're welcome",native:"どういたしまして",roman:"dou itashimashite",mn:"the you're-welcome drumroll: do-i-ta-shi-ma-shi-te"},
+  {en:"I don't understand",native:"わかりません",roman:"wakarimasen",mn:"wakaru = to get it, -masen = not — 'no wakaru here'"},
+  {en:"Do you speak English?",native:"英語を話せますか？",roman:"eigo o hanasemasu ka",mn:"eigo = 'AY-go' = English"},
+  {en:"Nice to meet you",native:"はじめまして",roman:"hajimemashite",mn:"hajime = 'begin' — 'nice to BEGIN with you'"},
+  {en:"OK / I'm fine",native:"大丈夫です",roman:"daijoubu desu",mn:"'DIE? JOB? — no no, all fine!' = I'm OK"},
+  {en:"No, thank you",native:"結構です",roman:"kekkou desu",mn:"'CAKE? KO.' — knocked out, no thanks, I'm good"},
+  {en:"One moment, please",native:"ちょっと待ってください",roman:"chotto matte kudasai",mn:"matte = wait — 'hold your MAT a moment'"},
+  {en:"I don't speak Japanese",native:"日本語が話せません",roman:"nihongo ga hanasemasen",mn:"nihongo = Japanese; hanasemasen = can't speak it"}
+ ],
+ dir:[
+  {en:"Where is…?",native:"…どこですか？",roman:"…doko desu ka",mn:"'DOH-ko?' — 'the DOCK? Oh, where is it?'"},
+  {en:"Airport",native:"空港",roman:"kuukou",mn:"kuu = sky + kou = port — 'SKY PORT' = airport"},
+  {en:"Station",native:"駅",roman:"eki",mn:"eki = 'EH-key' — the KEY stop = station"},
+  {en:"Subway",native:"地下鉄",roman:"chikatetsu",mn:"chika = underground + tetsu = iron — underground iron"},
+  {en:"Left",native:"左",roman:"hidari",mn:"'he DAR-ed' to turn left"},
+  {en:"Right",native:"右",roman:"migi",mn:"'ME? GEE, I'll go right'"},
+  {en:"Go straight",native:"まっすぐ",roman:"massugu",mn:"'MUST GO' straight = massugu"},
+  {en:"Taxi",native:"タクシー",roman:"takushii",mn:"takushii = taxi (katakana loanword)"},
+  {en:"Bus",native:"バス",roman:"basu",mn:"basu = bus"},
+  {en:"Hotel",native:"ホテル",roman:"hoteru",mn:"hoteru = hotel"},
+  {en:"Toilet",native:"トイレ",roman:"toire",mn:"toire = toilet — say 'TOY-reh'"},
+  {en:"Ticket",native:"切符",roman:"kippu",mn:"'KEEP-u' — KEEP the ticket"},
+  {en:"Stop here, please",native:"ここで止めてください",roman:"koko de tomete kudasai",mn:"tomete ≈ 'TOMATO!' — shout it to stop the cab"},
+  {en:"Entrance",native:"入口",roman:"iriguchi",mn:"iri = enter + guchi = mouth — entrance mouth"},
+  {en:"Exit",native:"出口",roman:"deguchi",mn:"de = out + guchi = mouth — exit mouth"},
+  {en:"I'm lost",native:"道に迷いました",roman:"michi ni mayoimashita",mn:"mayoi ≈ 'MAYO' — mayo everywhere, I'm lost"},
+  {en:"Here",native:"ここ",roman:"koko",mn:"'CO-CO, come HERE!' — koko = here"},
+  {en:"Map",native:"地図",roman:"chizu",mn:"'CHEESE!' — smile and check the CHEEse-map"}
+ ],
+ food:[
+  {en:"Water",native:"水",roman:"mizu",mn:"'ME? ZOO water, please' = mizu"},
+  {en:"Delicious",native:"おいしい",roman:"oishii",mn:"'OY, SHE cooks great!' = delicious"},
+  {en:"The bill, please",native:"お会計お願いします",roman:"okaikei onegai shimasu",mn:"kaikei = 'KAI-kay' = the accounting — bill please"},
+  {en:"This one",native:"これ",roman:"kore",mn:"kore = 'CORE' — the CORE of what I want = this"},
+  {en:"Tea",native:"お茶",roman:"ocha",mn:"o + CHA — honorable CHAi = tea"},
+  {en:"Beer",native:"ビール",roman:"biiru",mn:"biiru = beer"},
+  {en:"Rice",native:"ご飯",roman:"gohan",mn:"'GO HAve some rice' = gohan"},
+  {en:"Ramen",native:"ラーメン",roman:"raamen",mn:"raamen = ramen"},
+  {en:"Coffee",native:"コーヒー",roman:"koohii",mn:"koohii = coffee"},
+  {en:"Menu",native:"メニュー",roman:"menyuu",mn:"menyuu = menu"},
+  {en:"Cheers!",native:"乾杯",roman:"kanpai",mn:"kan = dry + pai = cup — 'DRY CUP!' = cheers"},
+  {en:"Chopsticks",native:"箸",roman:"hashi",mn:"'HASH-sticks' — hashi = chopsticks"},
+  {en:"Thanks for the meal",native:"ごちそうさまでした",roman:"gochisousama deshita",mn:"'GOT CHOW — thanks!' — the after-meal thank-you"},
+  {en:"No wasabi",native:"わさび抜き",roman:"wasabi nuki",mn:"nuki = removed — 'NUKE the wasabi'"},
+  {en:"One more, please",native:"もう一つください",roman:"mou hitotsu kudasai",mn:"'MORE — HIT me with one more'"},
+  {en:"Take-out",native:"持ち帰り",roman:"mochikaeri",mn:"mochi + kaeri (return) — 'take the MOCHI home' = take-out"},
+  {en:"Can I pay by card?",native:"カードで払えますか？",roman:"kaado de haraemasu ka",mn:"kaado = card — 'card OK?'"},
+  {en:"Spicy",native:"辛い",roman:"karai",mn:"'KARA-te on the tongue' = spicy"}
+ ],
+ num:[
+  {en:"One (1)",native:"一",roman:"ichi",mn:"ichi = 'EACH' — each one — one"},
+  {en:"Two (2)",native:"二",roman:"ni",mn:"ni = 'KNEE' — you have two knees"},
+  {en:"Three (3)",native:"三",roman:"san",mn:"san — a SANdwich has three layers"},
+  {en:"Four (4)",native:"四",roman:"yon",mn:"yon = 'YAWN' — yawn four times"},
+  {en:"Five (5)",native:"五",roman:"go",mn:"go — 'GO, high-FIVE!'"},
+  {en:"Six (6)",native:"六",roman:"roku",mn:"roku = 'ROCK' — a six-string rock guitar"},
+  {en:"Seven (7)",native:"七",roman:"nana",mn:"NANA says seven is lucky"},
+  {en:"Eight (8)",native:"八",roman:"hachi",mn:"hachi = 'HATCH' — hatch eight eggs"},
+  {en:"Nine (9)",native:"九",roman:"kyuu",mn:"kyuu = 'CUE' — cue the 9-ball"},
+  {en:"Ten (10)",native:"十",roman:"juu",mn:"juu = 'JEWel' — a perfect 10 jewel"},
+  {en:"Help!",native:"助けて！",roman:"tasukete",mn:"'TASK-eh-teh' — 'a task for you: HELP!'"},
+  {en:"How much?",native:"いくらですか？",roman:"ikura desu ka",mn:"'EEK!' at the price — (ikura is also salmon roe)"},
+  {en:"Too expensive",native:"高すぎます",roman:"takasugimasu",mn:"takai = tall — the price is too TALL"},
+  {en:"Police",native:"警察",roman:"keisatsu",mn:"'K-SAT-su' — the K-squad = police"},
+  {en:"Hospital",native:"病院",roman:"byouin",mn:"'BOY, he's IN the hospital' = byouin"},
+  {en:"Doctor",native:"医者",roman:"isha",mn:"'EASE-ya' — the doctor eases your pain"},
+  {en:"One hundred (100)",native:"百",roman:"hyaku",mn:"'HYA!' — 100 karate chops"},
+  {en:"Passport",native:"パスポート",roman:"pasupooto",mn:"pasupooto = passport"},
+  {en:"Cheaper, please",native:"安くしてください",roman:"yasuku shite kudasai",mn:"yasui = cheap — 'YA-SUE me, make it cheaper'"},
+  {en:"Pharmacy",native:"薬局",roman:"yakkyoku",mn:"'YAK-YOLK' — the yak-yolk shop = pharmacy"}
+ ]
+}
+};
+
+/* =====================================================================
+   PERSISTENCE — localStorage with a safe in-memory fallback, so the
+   game still runs even if storage is blocked (e.g. some sandboxed
+   previews). On an iPhone opened as a real file, progress persists.
+===================================================================== */
+const STORE_KEY = "layover_progress_v1";
+const memStore = {};
+const storage = {
+  get(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return memStore.data || null; }
+  },
+  set(data){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+    catch(e){ /* storage blocked */ }
+    memStore.data = data;
+  },
+  clear(){
+    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+    delete memStore.data;
+  }
+};
+
+const DEFAULT_PROGRESS = () => ({
+  score:0, streak:0, bestStreak:0, answered:0,
+  correctCounts:{},   // "zh|ess|你好" -> times answered correctly
+  mastered:{}         // same key -> true once correctCounts >= 3
+});
+let P = Object.assign(DEFAULT_PROGRESS(), storage.get() || {});
+P.correctCounts = P.correctCounts || {};
+P.mastered = P.mastered || {};
+const save = () => storage.set(P);
+
+/* =====================================================================
+   AUDIO — synthesized beeps via Web Audio API (no files needed)
+===================================================================== */
+let audioCtx = null;
+function getCtx(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) audioCtx = new AC();
+  }
+  if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, start, dur, type, vol){
+  const ctx = getCtx(); if(!ctx) return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + start + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(ctx.currentTime + start);
+  o.stop(ctx.currentTime + start + dur + 0.05);
+}
+const sfxCorrect = () => { tone(660,0,.12,"sine",.18); tone(880,.11,.16,"sine",.18); };
+const sfxWrong   = () => { tone(220,0,.18,"square",.09); tone(165,.14,.22,"square",.09); };
+const sfxMaster  = () => { tone(660,0,.1,"sine",.16); tone(880,.09,.1,"sine",.16); tone(1175,.18,.22,"sine",.18); };
+
+/* =====================================================================
+   SPEECH — Web Speech API with correct locales.
+   Voices load asynchronously on iOS, so we refresh the list on change.
+===================================================================== */
+let voices = [];
+let currentUtterance = null;   // held globally — Safari silently drops utterances
+                               // that get garbage-collected mid-speech
+let speechUnlocked = false;
+
+function loadVoices(){ try{ voices = speechSynthesis.getVoices() || []; }catch(e){ voices = []; } }
+if("speechSynthesis" in window){
+  loadVoices();
+  if(typeof speechSynthesis.onvoiceschanged !== "undefined"){
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+}
+
+function findVoice(locale){
+  const norm = v => (v.lang || "").replace("_","-").toLowerCase();
+  return voices.find(v => norm(v) === locale.toLowerCase())
+      || voices.find(v => norm(v).startsWith(locale.toLowerCase()))
+      || voices.find(v => norm(v).startsWith(locale.slice(0,2).toLowerCase()))
+      || null;
+}
+
+/* iOS unlocks speechSynthesis only after a speak() call made directly
+   inside a user gesture — fire a silent utterance once on first tap. */
+function unlockSpeech(){
+  if(speechUnlocked || !("speechSynthesis" in window)) return;
+  try{
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    speechUnlocked = true;
+  }catch(e){}
+}
+
+function speak(text, locale){
+  if(!("speechSynthesis" in window)){
+    setFeedback("Speech isn't supported in this browser — open the file in Safari or Chrome.", "bad");
+    return;
+  }
+  try{
+    loadVoices(); // voices arrive async on iOS; refresh right before speaking
+
+    // Cancel any speech already in flight, but never cancel-and-speak in the
+    // same tick unless something was actually playing (Safari race bug).
+    if(speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = locale;
+    u.rate = 0.8;
+    u.volume = 1;
+    u.pitch = 1;
+    const match = findVoice(locale);
+    if(match) u.voice = match;
+
+    const btn = document.getElementById("speakBtn");
+    btn.classList.add("speaking");
+    u.onend = () => { btn.classList.remove("speaking"); currentUtterance = null; };
+    u.onerror = () => {
+      btn.classList.remove("speaking");
+      currentUtterance = null;
+      setFeedback("Speech failed to play — check the ring/silent switch and volume.", "bad");
+    };
+
+    currentUtterance = u;          // keep a live reference (GC workaround)
+    speechSynthesis.speak(u);
+
+    // Detect silent failure: if nothing is speaking or queued shortly after,
+    // the platform likely has no voice installed for this language.
+    setTimeout(() => {
+      if(currentUtterance === u && !speechSynthesis.speaking && !speechSynthesis.pending){
+        btn.classList.remove("speaking");
+        const L = langInfo();
+        setFeedback("No " + L.name + " voice found on this device — see the ⚙︎ menu for how to add one.", "bad");
+      }
+    }, 700);
+  }catch(e){
+    setFeedback("Speech couldn't start on this device.", "bad");
+  }
+}
+
+/* =====================================================================
+   GAME STATE + LOGIC
+===================================================================== */
+let curLang = "zh";
+let curModule = "ess";
+let question = null;      // {word, mode, options[], answerText}
+let lastWordKey = null;
+let locked = false;
+
+const wordKey = (lang, mod, w) => lang + "|" + mod + "|" + w.native;
+const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+const langInfo = () => LANGS.find(l => l.id === curLang);
+const pool = () => DICT[curLang][curModule];
+const fullPool = () => MODULES.flatMap(m => DICT[curLang][m.id]);
+
+/* Question modes:
+   en2native  : show English  -> pick native script
+   native2en  : show native   -> pick English
+   char2roman : show native   -> pick romanization (character matching)
+   roman2char : show roman    -> pick native script                    */
+const MODES = ["en2native","native2en","char2roman","roman2char"];
+
+function pickDistractors(word, field, count){
+  const seen = new Set([word[field]]);
+  const out = [];
+  const tryAdd = w => {
+    if(!seen.has(w[field])){ seen.add(w[field]); out.push(w); }
+  };
+  // prefer same module, then anywhere in the language
+  shuffle(pool()).forEach(w => { if(out.length < count) tryAdd(w); });
+  if(out.length < count) shuffle(fullPool()).forEach(w => { if(out.length < count) tryAdd(w); });
+  return out;
+}
+
+function newQuestion(){
+  locked = false;
+  const p = pool();
+  let word = rand(p);
+  if(p.length > 1){
+    let guard = 0;
+    while(wordKey(curLang,curModule,word) === lastWordKey && guard++ < 10) word = rand(p);
+  }
+  lastWordKey = wordKey(curLang, curModule, word);
+
+  const mode = rand(MODES);
+  const answerField = (mode === "en2native" || mode === "roman2char") ? "native"
+                    : (mode === "native2en") ? "en" : "roman";
+  const distractors = pickDistractors(word, answerField, 3);
+  const options = shuffle([word, ...distractors]);
+
+  question = {word, mode, answerField, options};
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const {word, mode, answerField, options} = question;
+  const L = langInfo();
+  const kind = document.getElementById("promptKind");
+  const main = document.getElementById("promptMain");
+  const sub  = document.getElementById("promptSub");
+  const speakLabel = document.getElementById("speakLabel");
+
+  main.classList.remove("native");
+  if(mode === "en2native"){
+    kind.textContent = "Say it in " + L.name;
+    main.textContent = word.en;
+    sub.textContent = "";
+  }else if(mode === "native2en"){
+    kind.textContent = "What does this mean?";
+    main.textContent = word.native;
+    main.classList.add("native");
+    sub.textContent = "";
+  }else if(mode === "char2roman"){
+    kind.textContent = "Match the " + L.romanLabel;
+    main.textContent = word.native;
+    main.classList.add("native");
+    sub.textContent = "How is this pronounced?";
+  }else{ // roman2char
+    kind.textContent = "Match the characters";
+    main.textContent = word.roman;
+    sub.textContent = L.romanLabel + " → find the script";
+  }
+  speakLabel.textContent = "Speak · " + word.roman;
+
+  const mn = document.getElementById("mnemo");
+  mn.hidden = true;
+  mn.textContent = "";
+  document.getElementById("hintBtn").hidden = false;
+
+  const grid = document.getElementById("answers");
+  grid.innerHTML = "";
+  options.forEach(opt => {
+    const b = document.createElement("button");
+    b.className = "ans" + (answerField === "native" ? " native-text" : "");
+    b.textContent = opt[answerField];
+    b.addEventListener("click", () => answer(b, opt));
+    grid.appendChild(b);
+  });
+
+  setFeedback("Tap the correct answer below", "");
+}
+
+function answer(btn, chosen){
+  if(locked) return;
+  locked = true;
+  const {word, answerField} = question;
+  const correct = chosen[answerField] === word[answerField];
+  const buttons = [...document.querySelectorAll(".ans")];
+  buttons.forEach(b => { b.disabled = true; if(b !== btn) b.classList.add("dim"); });
+  const rightBtn = buttons.find(b => b.textContent === word[answerField]);
+
+  P.answered++;
+
+  if(correct){
+    btn.classList.add("correct");
+    P.streak++;
+    if(P.streak > P.bestStreak) P.bestStreak = P.streak;
+    const bonus = Math.min(P.streak, 5);
+    P.score += 10 + bonus;
+
+    const key = lastWordKey;
+    P.correctCounts[key] = (P.correctCounts[key] || 0) + 1;
+    let mastered = false;
+    if(P.correctCounts[key] >= 3 && !P.mastered[key]){
+      P.mastered[key] = true;
+      mastered = true;
+    }
+    if(mastered){
+      sfxMaster();
+      setFeedback("✓ +"+(10+bonus)+" · Word mastered! ★ " + word.native + " — " + word.roman, "good", true);
+    }else{
+      sfxCorrect();
+      setFeedback("✓ +"+(10+bonus)+" · " + word.native + " — " + word.roman + " — " + word.en, "good");
+    }
+  }else{
+    btn.classList.add("wrong","shake");
+    btn.classList.remove("dim");
+    if(rightBtn){ rightBtn.classList.add("correct"); rightBtn.classList.remove("dim"); }
+    P.streak = 0;
+    sfxWrong();
+    setFeedback("✗ It's " + word[answerField] + " (" + word.roman + " — " + word.en + ")", "bad");
+  }
+
+  save();
+  updateHeader();
+  renderModuleChips();
+
+  // Reveal the memory bridge and give time to read it
+  const mn = document.getElementById("mnemo");
+  mn.textContent = word.mn;
+  mn.hidden = false;
+  document.getElementById("hintBtn").hidden = true;
+
+  setTimeout(newQuestion, correct ? 2200 : 3600);
+}
+
+function setFeedback(msg, cls, star){
+  const f = document.getElementById("feedback");
+  f.className = "feedback" + (cls ? " " + cls : "");
+  f.innerHTML = "";
+  if(star){
+    const s = document.createElement("span");
+    s.className = "master"; s.textContent = "★";
+    f.appendChild(s);
+  }
+  f.appendChild(document.createTextNode(msg));
+}
+
+/* =====================================================================
+   RENDERING — header, tabs, chips
+===================================================================== */
+function updateHeader(){
+  document.getElementById("scoreVal").textContent = P.score;
+  document.getElementById("streakVal").textContent = P.streak;
+  document.getElementById("streakPill").classList.toggle("hot", P.streak >= 3);
+}
+
+function applyAccent(){
+  const L = langInfo();
+  document.documentElement.style.setProperty("--accent", L.accent);
+  // derive a soft translucent version of the accent
+  const hex = L.accent.replace("#","");
+  const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+  document.documentElement.style.setProperty("--accent-soft", "rgba("+r+","+g+","+b+",.14)");
+}
+
+function renderLangTabs(){
+  const wrap = document.getElementById("langTabs");
+  wrap.innerHTML = "";
+  LANGS.forEach(L => {
+    const b = document.createElement("button");
+    b.className = "lang-tab" + (L.id === curLang ? " active" : "");
+    b.innerHTML = '<span class="glyph">'+L.glyph+'</span><span class="name">'+L.name+'</span>';
+    b.addEventListener("click", () => {
+      if(curLang === L.id) return;
+      curLang = L.id;
+      applyAccent();
+      renderLangTabs();
+      renderModuleChips();
+      newQuestion();
+    });
+    wrap.appendChild(b);
+  });
+}
+
+function masteredInModule(langId, modId){
+  return DICT[langId][modId].filter(w => P.mastered[langId+"|"+modId+"|"+w.native]).length;
+}
+
+function renderModuleChips(){
+  const wrap = document.getElementById("moduleChips");
+  wrap.innerHTML = "";
+  MODULES.forEach(m => {
+    const total = DICT[curLang][m.id].length;
+    const done = masteredInModule(curLang, m.id);
+    const b = document.createElement("button");
+    b.className = "mod-chip" + (m.id === curModule ? " active" : "");
+    b.innerHTML = m.label + ' <span class="count">'+done+'/'+total+'</span>';
+    b.addEventListener("click", () => {
+      if(curModule === m.id) return;
+      curModule = m.id;
+      renderModuleChips();
+      newQuestion();
+    });
+    wrap.appendChild(b);
+  });
+}
+
+/* =====================================================================
+   SETTINGS SHEET + RESET
+===================================================================== */
+const veil = document.getElementById("sheetVeil");
+function openSheet(){
+  document.getElementById("stScore").textContent = P.score;
+  document.getElementById("stBest").textContent = P.bestStreak;
+  document.getElementById("stMastered").textContent = Object.keys(P.mastered).length;
+  document.getElementById("stAnswered").textContent = P.answered;
+  veil.classList.add("open");
+}
+document.getElementById("settingsBtn").addEventListener("click", openSheet);
+document.getElementById("closeSheet").addEventListener("click", () => veil.classList.remove("open"));
+veil.addEventListener("click", e => { if(e.target === veil) veil.classList.remove("open"); });
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if(confirm("Reset all progress? Score, streaks, and mastered words will be cleared.")){
+    storage.clear();
+    P = DEFAULT_PROGRESS();
+    save();
+    updateHeader();
+    renderModuleChips();
+    veil.classList.remove("open");
+    setFeedback("Progress cleared — fresh start!", "");
+    newQuestion();
+  }
+});
+
+/* =====================================================================
+   SPEAK BUTTON + BOOT
+===================================================================== */
+document.getElementById("speakBtn").addEventListener("click", () => {
+  getCtx();                       // unlock Web Audio on first tap (iOS)
+  unlockSpeech();                 // unlock speech synthesis on first tap (iOS)
+  if(question) speak(question.word.native, langInfo().locale);
+});
+
+document.getElementById("hintBtn").addEventListener("click", () => {
+  if(!question) return;
+  const mn = document.getElementById("mnemo");
+  if(mn.hidden){
+    mn.textContent = question.word.mn;
+    mn.hidden = false;
+  }else{
+    mn.hidden = true;
+  }
+});
+
+// Any first touch anywhere also unlocks both audio systems, so the very
+// first Speak tap plays immediately instead of only unlocking.
+document.body.addEventListener("touchstart", () => { getCtx(); unlockSpeech(); }, {once:true, passive:true});
+document.body.addEventListener("mousedown",  () => { getCtx(); unlockSpeech(); }, {once:true});
+
+applyAccent();
+renderLangTabs();
+renderModuleChips();
+updateHeader();
+newQuestion();
+
+/* =====================================================================
+   PWA — register the service worker for full offline support.
+   Only possible over http(s); silently skipped if opened as a raw file,
+   so this same index.html still works standalone.
+===================================================================== */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
