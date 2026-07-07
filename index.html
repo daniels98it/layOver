@@ -99,6 +99,16 @@
   .mod-chip.active{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
   .mod-chip .count{font-size:11px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 
+  /* ============ MODE TABS ============ */
+  .mode-tabs{display:flex;gap:8px;margin-top:10px;background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:4px}
+  .mode-tab{
+    flex:1;padding:9px 4px;border-radius:10px;
+    font-size:13px;font-weight:700;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .15s,color .15s;
+  }
+  .mode-tab.active{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--accent)}
+
   /* ============ MAIN QUESTION AREA ============ */
   main{
     flex:1;display:flex;flex-direction:column;
@@ -137,9 +147,27 @@
     font-size:14px;font-weight:700;color:var(--ink);
   }
   .speak-btn:active{transform:scale(.96);border-color:var(--accent)}
+  .speak-btn[hidden]{display:none}
   .speak-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
   .speak-btn.speaking .dot{animation:pulse .5s infinite alternate}
   @keyframes pulse{from{transform:scale(.7);opacity:.5}to{transform:scale(1.3);opacity:1}}
+  .speak-btn.toggle{padding:11px 16px}
+  .speak-btn.toggle[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .speak-btn.toggle[aria-pressed="false"]{opacity:.6}
+  .speak-btn.dislike{padding:11px 15px}
+  .speak-btn.dislike:active{border-color:var(--bad)}
+
+  /* option speak buttons (Say-it mode) */
+  .ans{position:relative}
+  .ans-speak{
+    position:absolute;top:6px;right:6px;
+    width:30px;height:30px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;color:var(--accent);z-index:2;
+  }
+  .ans-speak:active{transform:scale(.9)}
+  .ans.has-speak{padding-top:22px}
 
   /* boarding-pass perforation */
   .perf{
@@ -208,6 +236,40 @@
   .sheet-btn.danger{background:rgba(255,107,107,.12);border:1.5px solid var(--bad);color:var(--bad)}
   .sheet-btn.plain{background:var(--panel-2);border:1.5px solid var(--line)}
 
+  /* ============ BROWSE SHEET ============ */
+  .browse-sheet{max-height:88dvh;display:flex;flex-direction:column}
+  .browse-input{
+    width:100%;margin-bottom:12px;padding:13px 14px;
+    background:var(--panel-2);border:1.5px solid var(--line);border-radius:12px;
+    color:var(--ink);font-size:16px;
+  }
+  .browse-input:focus{outline:none;border-color:var(--accent)}
+  .browse-results{
+    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    min-height:120px;margin:0 -4px;padding:0 4px;
+  }
+  .browse-row{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 4px;border-bottom:1px solid var(--line);
+  }
+  .browse-row .b-glyph{
+    flex:none;width:34px;height:34px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:700;background:var(--panel-2);border:1px solid var(--line);
+  }
+  .browse-row .b-text{flex:1;min-width:0}
+  .browse-row .b-native{font-size:18px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+  .browse-row .b-sub{font-size:12px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+  .browse-row .b-sub .b-en{color:var(--ink)}
+  .browse-row .b-speak{
+    flex:none;width:40px;height:40px;border-radius:50%;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:var(--accent);
+  }
+  .browse-row .b-speak:active{transform:scale(.92);border-color:var(--accent)}
+  .browse-empty{text-align:center;color:var(--muted);font-size:14px;padding:24px 0}
+
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important}
   }
@@ -221,10 +283,12 @@
     <div class="stats">
       <div class="pill"><span class="lbl">Score</span><span class="val" id="scoreVal">0</span></div>
       <div class="pill streak" id="streakPill"><span>🔥</span><span class="val" id="streakVal">0</span></div>
+      <button class="icon-btn" id="browseBtn" aria-label="Browse and search words">🔍</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Settings and progress">⚙︎</button>
     </div>
   </div>
   <div class="lang-tabs" id="langTabs"></div>
+  <div class="mode-tabs" id="modeTabs"></div>
   <div class="modules" id="moduleChips"></div>
 </header>
 
@@ -236,7 +300,9 @@
     <div class="mnemo" id="mnemo" hidden></div>
     <div class="btn-row">
       <button class="speak-btn" id="speakBtn"><span class="dot"></span><span id="speakLabel">Speak</span></button>
+      <button class="speak-btn toggle" id="autoBtn" aria-pressed="true" aria-label="Auto-play audio">🔁 Auto</button>
       <button class="speak-btn" id="hintBtn">💡 Hint</button>
+      <button class="speak-btn dislike" id="dislikeBtn" aria-label="Hide this phrase for me">👎</button>
     </div>
   </div>
   <div class="perf"></div>
@@ -254,8 +320,20 @@
     <div class="row"><span>Best streak</span><b id="stBest">0</b></div>
     <div class="row"><span>Words mastered</span><b id="stMastered">0</b></div>
     <div class="row"><span>Questions answered</span><b id="stAnswered">0</b></div>
+    <div class="row"><span>Phrases hidden 👎</span><b id="stDisliked">0</b></div>
+    <button class="sheet-btn plain" id="restoreBtn" hidden>Restore hidden phrases</button>
     <button class="sheet-btn danger" id="resetBtn">Reset all progress</button>
     <button class="sheet-btn plain" id="closeSheet">Back to the game</button>
+  </div>
+</div>
+
+<div class="sheet-veil" id="browseVeil">
+  <div class="sheet browse-sheet" role="dialog" aria-label="Browse and compare words">
+    <h2>Browse &amp; compare</h2>
+    <p>Search any word across all three languages, then tap 🔊 to hear them back-to-back and catch the difference.</p>
+    <input type="search" id="browseInput" class="browse-input" placeholder="Search e.g. thank you, water, 谢谢…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div class="browse-results" id="browseResults"></div>
+    <button class="sheet-btn plain" id="closeBrowse">Done</button>
   </div>
 </div>
 
@@ -558,11 +636,16 @@ const storage = {
 const DEFAULT_PROGRESS = () => ({
   score:0, streak:0, bestStreak:0, answered:0,
   correctCounts:{},   // "zh|ess|你好" -> times answered correctly
-  mastered:{}         // same key -> true once correctCounts >= 3
+  mastered:{},        // same key -> true once correctCounts >= 3
+  disliked:{},        // same key -> true when the user hides a phrase
+  autoplay:true,      // auto-speak the prompt on listening questions
+  mode:"listen"       // "listen" or "pronounce"
 });
 let P = Object.assign(DEFAULT_PROGRESS(), storage.get() || {});
 P.correctCounts = P.correctCounts || {};
 P.mastered = P.mastered || {};
+P.disliked = P.disliked || {};
+if(typeof P.autoplay !== "boolean") P.autoplay = true;
 const save = () => storage.set(P);
 
 /* =====================================================================
@@ -680,9 +763,19 @@ function speak(text, locale){
 ===================================================================== */
 let curLang = "zh";
 let curModule = "ess";
+let curMode = (P.mode === "pronounce") ? "pronounce" : "listen";
 let question = null;      // {word, mode, options[], answerText}
 let lastWordKey = null;
 let locked = false;
+
+/* Two speaking/listening game modes:
+   listen    : hear + read the native script -> pick the English meaning
+   pronounce : read the English -> pick the correct written form
+               (each option carries its own 🔊 to hear it first)          */
+const MODES = [
+  {id:"listen",    label:"🎧 Listen"},
+  {id:"pronounce", label:"🗣 Say it"}
+];
 
 const wordKey = (lang, mod, w) => lang + "|" + mod + "|" + w.native;
 const rand = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -695,15 +788,20 @@ function shuffle(arr){
   return a;
 }
 const langInfo = () => LANGS.find(l => l.id === curLang);
-const pool = () => DICT[curLang][curModule];
-const fullPool = () => MODULES.flatMap(m => DICT[curLang][m.id]);
+const isDisliked = w => !!P.disliked[wordKey(curLang, curModule, w)];
 
-/* Question modes:
-   en2native  : show English  -> pick native script
-   native2en  : show native   -> pick English
-   char2roman : show native   -> pick romanization (character matching)
-   roman2char : show roman    -> pick native script                    */
-const MODES = ["en2native","native2en","char2roman","roman2char"];
+// Pools exclude phrases the user hid — but never fall to fewer than what a
+// question needs, so a heavily-pruned module still plays.
+const rawPool = () => DICT[curLang][curModule];
+const rawFullPool = () => MODULES.flatMap(m => DICT[curLang][m.id]);
+function pool(){
+  const kept = rawPool().filter(w => !isDisliked(w));
+  return kept.length >= 4 ? kept : rawPool();
+}
+function fullPool(){
+  const kept = rawFullPool().filter(w => !isDisliked(w));
+  return kept.length >= 4 ? kept : rawFullPool();
+}
 
 function pickDistractors(word, field, count){
   const seen = new Set([word[field]]);
@@ -727,13 +825,13 @@ function newQuestion(){
   }
   lastWordKey = wordKey(curLang, curModule, word);
 
-  const mode = rand(MODES);
-  const answerField = (mode === "en2native" || mode === "roman2char") ? "native"
-                    : (mode === "native2en") ? "en" : "roman";
+  // In "listen" the answer is the English meaning; in "pronounce" it's the
+  // written native form, and every option can be heard before choosing.
+  const answerField = (curMode === "listen") ? "en" : "native";
   const distractors = pickDistractors(word, answerField, 3);
   const options = shuffle([word, ...distractors]);
 
-  question = {word, mode, answerField, options};
+  question = {word, mode:curMode, answerField, options};
   renderQuestion();
 }
 
@@ -743,46 +841,67 @@ function renderQuestion(){
   const kind = document.getElementById("promptKind");
   const main = document.getElementById("promptMain");
   const sub  = document.getElementById("promptSub");
-  const speakLabel = document.getElementById("speakLabel");
+  const speakBtn = document.getElementById("speakBtn");
+  const autoBtn  = document.getElementById("autoBtn");
 
   main.classList.remove("native");
-  if(mode === "en2native"){
-    kind.textContent = "Say it in " + L.name;
-    main.textContent = word.en;
-    sub.textContent = "";
-  }else if(mode === "native2en"){
+  if(mode === "listen"){
+    // Hear + read the native script; choose what it means.
     kind.textContent = "What does this mean?";
     main.textContent = word.native;
     main.classList.add("native");
-    sub.textContent = "";
-  }else if(mode === "char2roman"){
-    kind.textContent = "Match the " + L.romanLabel;
-    main.textContent = word.native;
-    main.classList.add("native");
-    sub.textContent = "How is this pronounced?";
-  }else{ // roman2char
-    kind.textContent = "Match the characters";
-    main.textContent = word.roman;
-    sub.textContent = L.romanLabel + " → find the script";
+    sub.textContent = "Listen, then tap the meaning";
+    speakBtn.hidden = false;
+    autoBtn.hidden  = false;
+  }else{ // pronounce
+    // Read the English; pick the correct written form (hear each first).
+    kind.textContent = "Say it in " + L.name;
+    main.textContent = word.en;
+    sub.textContent = "Tap 🔊 to hear each, then choose";
+    speakBtn.hidden = true;   // prompt is English — nothing to pronounce yet
+    autoBtn.hidden  = true;
   }
-  speakLabel.textContent = "Speak · " + word.roman;
 
   const mn = document.getElementById("mnemo");
   mn.hidden = true;
   mn.textContent = "";
   document.getElementById("hintBtn").hidden = false;
+  document.getElementById("dislikeBtn").hidden = false;
 
   const grid = document.getElementById("answers");
   grid.innerHTML = "";
+  const speakable = (answerField === "native");
   options.forEach(opt => {
     const b = document.createElement("button");
-    b.className = "ans" + (answerField === "native" ? " native-text" : "");
-    b.textContent = opt[answerField];
+    b.className = "ans" + (speakable ? " native-text has-speak" : "");
+    b._val = opt[answerField];   // match key (button text may include the 🔊)
+    const label = document.createElement("span");
+    label.textContent = opt[answerField];
+    b.appendChild(label);
+    if(speakable){
+      const sp = document.createElement("span");
+      sp.className = "ans-speak";
+      sp.textContent = "🔊";
+      sp.setAttribute("role","button");
+      sp.setAttribute("aria-label","Hear this option");
+      sp.addEventListener("click", e => {
+        e.stopPropagation();
+        speak(opt.native, L.locale);
+      });
+      b.appendChild(sp);
+    }
     b.addEventListener("click", () => answer(b, opt));
     grid.appendChild(b);
   });
 
-  setFeedback("Tap the correct answer below", "");
+  setFeedback(mode === "listen" ? "Tap the correct meaning below"
+                                : "Tap the correct one below", "");
+
+  // Auto-play the prompt audio on listening questions, so the user hears it
+  // without tapping Speak every time (once speech is unlocked by a first tap).
+  if(mode === "listen" && P.autoplay && speechUnlocked){
+    speak(word.native, L.locale);
+  }
 }
 
 function answer(btn, chosen){
@@ -792,7 +911,7 @@ function answer(btn, chosen){
   const correct = chosen[answerField] === word[answerField];
   const buttons = [...document.querySelectorAll(".ans")];
   buttons.forEach(b => { b.disabled = true; if(b !== btn) b.classList.add("dim"); });
-  const rightBtn = buttons.find(b => b.textContent === word[answerField]);
+  const rightBtn = buttons.find(b => b._val === word[answerField]);
 
   P.answered++;
 
@@ -888,6 +1007,25 @@ function renderLangTabs(){
   });
 }
 
+function renderModeTabs(){
+  const wrap = document.getElementById("modeTabs");
+  wrap.innerHTML = "";
+  MODES.forEach(m => {
+    const b = document.createElement("button");
+    b.className = "mode-tab" + (m.id === curMode ? " active" : "");
+    b.textContent = m.label;
+    b.addEventListener("click", () => {
+      if(curMode === m.id) return;
+      curMode = m.id;
+      P.mode = m.id;
+      save();
+      renderModeTabs();
+      newQuestion();
+    });
+    wrap.appendChild(b);
+  });
+}
+
 function masteredInModule(langId, modId){
   return DICT[langId][modId].filter(w => P.mastered[langId+"|"+modId+"|"+w.native]).length;
 }
@@ -920,17 +1058,31 @@ function openSheet(){
   document.getElementById("stBest").textContent = P.bestStreak;
   document.getElementById("stMastered").textContent = Object.keys(P.mastered).length;
   document.getElementById("stAnswered").textContent = P.answered;
+  const dislikedCount = Object.keys(P.disliked).length;
+  document.getElementById("stDisliked").textContent = dislikedCount;
+  document.getElementById("restoreBtn").hidden = dislikedCount === 0;
   veil.classList.add("open");
 }
 document.getElementById("settingsBtn").addEventListener("click", openSheet);
 document.getElementById("closeSheet").addEventListener("click", () => veil.classList.remove("open"));
+document.getElementById("restoreBtn").addEventListener("click", () => {
+  P.disliked = {};
+  save();
+  renderModuleChips();
+  openSheet();          // refresh the counts + hide the button
+  setFeedback("Hidden phrases restored — they're back in rotation.", "");
+  newQuestion();
+});
 veil.addEventListener("click", e => { if(e.target === veil) veil.classList.remove("open"); });
 document.getElementById("resetBtn").addEventListener("click", () => {
   if(confirm("Reset all progress? Score, streaks, and mastered words will be cleared.")){
     storage.clear();
     P = DEFAULT_PROGRESS();
     save();
+    curMode = P.mode;
     updateHeader();
+    renderModeTabs();
+    syncAutoBtn();
     renderModuleChips();
     veil.classList.remove("open");
     setFeedback("Progress cleared — fresh start!", "");
@@ -947,6 +1099,34 @@ document.getElementById("speakBtn").addEventListener("click", () => {
   if(question) speak(question.word.native, langInfo().locale);
 });
 
+/* Auto-play toggle — remembers the choice and, when turned on, immediately
+   plays the current listening prompt so the change is audible right away. */
+function syncAutoBtn(){
+  const b = document.getElementById("autoBtn");
+  b.setAttribute("aria-pressed", P.autoplay ? "true" : "false");
+  b.textContent = P.autoplay ? "🔁 Auto" : "🔇 Auto";
+}
+document.getElementById("autoBtn").addEventListener("click", () => {
+  getCtx(); unlockSpeech();
+  P.autoplay = !P.autoplay;
+  save();
+  syncAutoBtn();
+  if(P.autoplay && question && question.mode === "listen"){
+    speak(question.word.native, langInfo().locale);
+  }
+});
+
+/* Dislike — hide a phrase this user won't need, then move on. */
+document.getElementById("dislikeBtn").addEventListener("click", () => {
+  if(!question) return;
+  P.disliked[wordKey(curLang, curModule, question.word)] = true;
+  save();
+  renderModuleChips();
+  setFeedback("Hidden 👎 — you can restore it in ⚙︎", "");
+  locked = true;                  // ignore any pending answer taps
+  setTimeout(newQuestion, 500);
+});
+
 document.getElementById("hintBtn").addEventListener("click", () => {
   if(!question) return;
   const mn = document.getElementById("mnemo");
@@ -958,6 +1138,68 @@ document.getElementById("hintBtn").addEventListener("click", () => {
   }
 });
 
+/* =====================================================================
+   BROWSE / SEARCH — look up any phrase across all three languages and
+   hear them back-to-back to compare pronunciations.
+===================================================================== */
+const browseVeil = document.getElementById("browseVeil");
+const browseInput = document.getElementById("browseInput");
+const browseResults = document.getElementById("browseResults");
+
+function allEntries(){
+  const out = [];
+  LANGS.forEach(L => MODULES.forEach(m => {
+    (DICT[L.id][m.id] || []).forEach(w => out.push({L, w}));
+  }));
+  return out;
+}
+function renderBrowse(query){
+  const q = (query || "").trim().toLowerCase();
+  browseResults.innerHTML = "";
+  let entries = allEntries();
+  if(q){
+    entries = entries.filter(({w}) =>
+      w.en.toLowerCase().includes(q) ||
+      w.native.toLowerCase().includes(q) ||
+      w.roman.toLowerCase().includes(q));
+  }
+  if(!entries.length){
+    const e = document.createElement("div");
+    e.className = "browse-empty";
+    e.textContent = "No matches — try another word.";
+    browseResults.appendChild(e);
+    return;
+  }
+  entries.slice(0, 80).forEach(({L, w}) => {
+    const row = document.createElement("div");
+    row.className = "browse-row";
+    row.innerHTML =
+      '<div class="b-glyph">'+L.glyph+'</div>'+
+      '<div class="b-text"><div class="b-native"></div>'+
+      '<div class="b-sub"><span class="b-en"></span> · <span class="b-roman"></span></div></div>';
+    row.querySelector(".b-native").textContent = w.native;
+    row.querySelector(".b-en").textContent = w.en;
+    row.querySelector(".b-roman").textContent = w.roman;
+    const sp = document.createElement("button");
+    sp.className = "b-speak";
+    sp.textContent = "🔊";
+    sp.setAttribute("aria-label", "Hear " + w.en + " in " + L.name);
+    sp.addEventListener("click", () => { getCtx(); unlockSpeech(); speak(w.native, L.locale); });
+    row.appendChild(sp);
+    browseResults.appendChild(row);
+  });
+}
+function openBrowse(){
+  getCtx(); unlockSpeech();
+  browseInput.value = "";
+  renderBrowse("");
+  browseVeil.classList.add("open");
+}
+document.getElementById("browseBtn").addEventListener("click", openBrowse);
+document.getElementById("closeBrowse").addEventListener("click", () => browseVeil.classList.remove("open"));
+browseVeil.addEventListener("click", e => { if(e.target === browseVeil) browseVeil.classList.remove("open"); });
+browseInput.addEventListener("input", () => renderBrowse(browseInput.value));
+
 // Any first touch anywhere also unlocks both audio systems, so the very
 // first Speak tap plays immediately instead of only unlocking.
 document.body.addEventListener("touchstart", () => { getCtx(); unlockSpeech(); }, {once:true, passive:true});
@@ -965,6 +1207,8 @@ document.body.addEventListener("mousedown",  () => { getCtx(); unlockSpeech(); }
 
 applyAccent();
 renderLangTabs();
+renderModeTabs();
+syncAutoBtn();
 renderModuleChips();
 updateHeader();
 newQuestion();
