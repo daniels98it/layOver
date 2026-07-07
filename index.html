@@ -1219,8 +1219,27 @@ newQuestion();
    so this same index.html still works standalone.
 ===================================================================== */
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  // If this page is already controlled by a service worker, a controller
+  // change means a NEW version just activated — reload once to show it.
+  // (Skipped on the very first install, where there's no prior controller,
+  // so we never reload the page the user just opened.)
+  if (navigator.serviceWorker.controller) {
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    });
+  }
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      // Proactively check for a fresh sw.js each launch and whenever the
+      // app returns to the foreground (how iOS standalone PWAs resume).
+      reg.update().catch(() => {});
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") reg.update().catch(() => {});
+      });
+    }).catch(() => {});
   });
 }
 </script>
