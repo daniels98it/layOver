@@ -269,6 +269,37 @@
   }
   .browse-row .b-speak:active{transform:scale(.92);border-color:var(--accent)}
   .browse-empty{text-align:center;color:var(--muted);font-size:14px;padding:24px 0}
+  .browse-filters{display:flex;gap:8px;margin-bottom:12px}
+  .b-filter{
+    flex:1;padding:9px 4px;border-radius:999px;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    font-size:13px;font-weight:700;color:var(--muted);
+  }
+  .b-filter.active{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+
+  /* ============ WORD DETAIL SHEET ============ */
+  #detailVeil{z-index:60}
+  .detail-sheet{max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;text-align:center}
+  .d-native{font-size:44px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
+  .d-roman{font-size:18px;color:var(--amber);font-weight:700;margin-top:6px}
+  .d-en{font-size:15px;color:var(--muted);margin-top:4px;margin-bottom:14px}
+  .d-row{
+    text-align:left;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:12px;padding:11px 13px;margin-top:8px;
+    font-size:14px;line-height:1.5;
+  }
+  .d-row .d-lbl{
+    display:block;font-size:10px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:3px;
+  }
+  .d-row.hint{color:var(--amber);font-style:italic}
+  .d-row.hint .d-lbl{font-style:normal}
+  .d-actions{display:flex;gap:10px;margin-top:14px}
+  .d-actions .sheet-btn{flex:1;margin-top:0}
+
+  /* say-it-aloud nudge (production effect) */
+  .echo{margin-top:12px;font-size:14px;font-weight:700;color:var(--good)}
+  .echo[hidden]{display:none}
 
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important}
@@ -298,6 +329,7 @@
     <div class="prompt-main" id="promptMain">…</div>
     <div class="prompt-sub" id="promptSub"></div>
     <div class="mnemo" id="mnemo" hidden></div>
+    <div class="echo" id="echoLine" hidden></div>
     <div class="btn-row">
       <button class="speak-btn" id="speakBtn"><span class="dot"></span><span id="speakLabel">Speak</span></button>
       <button class="speak-btn toggle" id="autoBtn" aria-pressed="true" aria-label="Auto-play audio">🔁 Auto</button>
@@ -314,11 +346,12 @@
 <div class="sheet-veil" id="sheetVeil">
   <div class="sheet" role="dialog" aria-label="Progress and settings">
     <h2>Your trip so far</h2>
-    <p>Progress saves automatically on this device — close the file, land, reopen, and pick up where you left off.</p>
+    <p>Progress saves automatically on this device. The trainer schedules each word with expanding review intervals (1&nbsp;min → 5&nbsp;min → 30&nbsp;min → 4&nbsp;h → days) — the spacing that memory research shows fixes words in long-term memory. A word is mastered once you recall it correctly across four of those widening gaps.</p>
     <p><b style="color:var(--ink)">No sound from Speak?</b> ① Flip the iPhone ring/silent switch to ring — Safari speech respects it. ② Turn the volume up. ③ For offline use, download voices before your flight: Settings → Accessibility → Spoken Content → Voices → add a Chinese, Korean, and Japanese voice.</p>
     <div class="row"><span>Total score</span><b id="stScore">0</b></div>
     <div class="row"><span>Best streak</span><b id="stBest">0</b></div>
     <div class="row"><span>Words mastered</span><b id="stMastered">0</b></div>
+    <div class="row"><span>Due for review now</span><b id="stDue">0</b></div>
     <div class="row"><span>Questions answered</span><b id="stAnswered">0</b></div>
     <div class="row"><span>Phrases hidden 👎</span><b id="stDisliked">0</b></div>
     <button class="sheet-btn plain" id="restoreBtn" hidden>Restore hidden phrases</button>
@@ -330,10 +363,27 @@
 <div class="sheet-veil" id="browseVeil">
   <div class="sheet browse-sheet" role="dialog" aria-label="Browse and compare words">
     <h2>Browse &amp; compare</h2>
-    <p>Search any word across all three languages, then tap 🔊 to hear them back-to-back and catch the difference.</p>
+    <p>Search any word, tap 🔊 to hear entries back-to-back, or tap a row for details.</p>
     <input type="search" id="browseInput" class="browse-input" placeholder="Search e.g. thank you, water, 谢谢…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div class="browse-filters" id="browseFilters"></div>
     <div class="browse-results" id="browseResults"></div>
     <button class="sheet-btn plain" id="closeBrowse">Done</button>
+  </div>
+</div>
+
+<div class="sheet-veil" id="detailVeil">
+  <div class="sheet detail-sheet" role="dialog" aria-label="Word details">
+    <div class="d-native" id="dNative"></div>
+    <div class="d-roman" id="dRoman"></div>
+    <div class="d-en" id="dEn"></div>
+    <div class="d-row hint"><span class="d-lbl">💡 Memory hint</span><span id="dHint"></span></div>
+    <div class="d-row"><span class="d-lbl">🎭 When to use it</span><span id="dOccasion"></span></div>
+    <div class="d-row"><span class="d-lbl">📈 Your progress</span><span id="dProgress"></span></div>
+    <div class="d-actions">
+      <button class="sheet-btn plain" id="dSpeak">🔊 Hear it</button>
+      <button class="sheet-btn plain" id="dHide">👎 Hide</button>
+    </div>
+    <button class="sheet-btn plain" id="closeDetail">Back</button>
   </div>
 </div>
 
@@ -636,8 +686,9 @@ const storage = {
 const DEFAULT_PROGRESS = () => ({
   score:0, streak:0, bestStreak:0, answered:0,
   correctCounts:{},   // "zh|ess|你好" -> times answered correctly
-  mastered:{},        // same key -> true once correctCounts >= 3
+  mastered:{},        // same key -> true once recalled at MASTER_BOX spacing
   disliked:{},        // same key -> true when the user hides a phrase
+  srs:{},             // same key -> {b: box 0-6, d: next-review timestamp}
   autoplay:true,      // auto-speak the prompt on listening questions
   mode:"listen"       // "listen" or "pronounce"
 });
@@ -645,8 +696,31 @@ let P = Object.assign(DEFAULT_PROGRESS(), storage.get() || {});
 P.correctCounts = P.correctCounts || {};
 P.mastered = P.mastered || {};
 P.disliked = P.disliked || {};
+P.srs = P.srs || {};
 if(typeof P.autoplay !== "boolean") P.autoplay = true;
 const save = () => storage.set(P);
+
+/* =====================================================================
+   SPACED REPETITION — expanding-interval scheduler (Leitner / Pimsleur
+   style). Retrieving a word at gradually widening gaps is the single
+   best-evidenced way to fix vocabulary in long-term memory (Pimsleur
+   1967; Karpicke & Bauernschmidt 2011). Correct → the word climbs a box
+   and its next review moves further out; wrong → it drops back and
+   returns within a minute for relearning.
+===================================================================== */
+const INTERVALS = [30e3, 60e3, 5*60e3, 30*60e3, 4*3600e3, 3*86400e3, 7*86400e3]; // per box 0-6
+const MASTER_BOX = 4;   // mastered = recalled across four widening gaps
+const FOCUS_SIZE = 6;   // learn in small sets — retention drops sharply past ~6-8 new items
+
+// Migrate pre-SRS progress: words already answered keep their standing.
+(function migrateSrs(){
+  const now = Date.now();
+  for(const key in P.correctCounts){
+    if(P.srs[key]) continue;
+    const b = P.mastered[key] ? MASTER_BOX : Math.min(P.correctCounts[key], 3);
+    P.srs[key] = { b, d: now + (P.mastered[key] ? INTERVALS[MASTER_BOX] : 0) };
+  }
+})();
 
 /* =====================================================================
    AUDIO — synthesized beeps via Web Audio API (no files needed)
@@ -777,7 +851,11 @@ const MODES = [
   {id:"pronounce", label:"🗣 Say it"}
 ];
 
-const wordKey = (lang, mod, w) => lang + "|" + mod + "|" + w.native;
+// Tag every word with its module once, so keys are correct no matter which
+// module a word was pulled from (distractors can come from anywhere).
+LANGS.forEach(L => MODULES.forEach(m => DICT[L.id][m.id].forEach(w => { w._mod = m.id; })));
+
+const keyOf = (w, langId) => (langId || curLang) + "|" + w._mod + "|" + w.native;
 const rand = arr => arr[Math.floor(Math.random() * arr.length)];
 function shuffle(arr){
   const a = arr.slice();
@@ -788,7 +866,7 @@ function shuffle(arr){
   return a;
 }
 const langInfo = () => LANGS.find(l => l.id === curLang);
-const isDisliked = w => !!P.disliked[wordKey(curLang, curModule, w)];
+const isDisliked = (w, langId) => !!P.disliked[keyOf(w, langId)];
 
 // Pools exclude phrases the user hid — but never fall to fewer than what a
 // question needs, so a heavily-pruned module still plays.
@@ -801,6 +879,31 @@ function pool(){
 function fullPool(){
   const kept = rawFullPool().filter(w => !isDisliked(w));
   return kept.length >= 4 ? kept : rawFullPool();
+}
+
+/* Pick the next word the way the spacing research says to:
+   1. a word whose review is due — retrieval right around the point of
+      forgetting is where the memory gain happens;
+   2. otherwise a NEW word, but only while few words are still in
+      the learning phase (small sets beat flooding);
+   3. otherwise the word whose review comes up soonest (slightly early
+      beats idling — and keeps play continuous). */
+function chooseWord(){
+  const now = Date.now();
+  let p = pool().filter(w => keyOf(w) !== lastWordKey);
+  if(!p.length) p = pool();
+  const st = w => P.srs[keyOf(w)];
+
+  const due = p.filter(w => st(w) && st(w).d <= now);
+  if(due.length) return rand(due);
+
+  const unseen = p.filter(w => !st(w));
+  const learning = p.filter(w => st(w) && !P.mastered[keyOf(w)]);
+  if(unseen.length && learning.length < FOCUS_SIZE) return rand(unseen);
+
+  const seen = p.filter(w => st(w));
+  if(seen.length) return seen.sort((a,b) => st(a).d - st(b).d)[0];
+  return rand(p);
 }
 
 function pickDistractors(word, field, count){
@@ -817,13 +920,9 @@ function pickDistractors(word, field, count){
 
 function newQuestion(){
   locked = false;
-  const p = pool();
-  let word = rand(p);
-  if(p.length > 1){
-    let guard = 0;
-    while(wordKey(curLang,curModule,word) === lastWordKey && guard++ < 10) word = rand(p);
-  }
-  lastWordKey = wordKey(curLang, curModule, word);
+  const word = chooseWord();
+  const isNew = !P.srs[keyOf(word)];
+  lastWordKey = keyOf(word);
 
   // In "listen" the answer is the English meaning; in "pronounce" it's the
   // written native form, and every option can be heard before choosing.
@@ -831,41 +930,43 @@ function newQuestion(){
   const distractors = pickDistractors(word, answerField, 3);
   const options = shuffle([word, ...distractors]);
 
-  question = {word, mode:curMode, answerField, options};
+  question = {word, mode:curMode, answerField, options, isNew};
   renderQuestion();
 }
 
 function renderQuestion(){
-  const {word, mode, answerField, options} = question;
+  const {word, mode, answerField, options, isNew} = question;
   const L = langInfo();
   const kind = document.getElementById("promptKind");
   const main = document.getElementById("promptMain");
   const sub  = document.getElementById("promptSub");
   const speakBtn = document.getElementById("speakBtn");
-  const autoBtn  = document.getElementById("autoBtn");
+  const badge = isNew ? "🆕 New word · " : "";
 
   main.classList.remove("native");
   if(mode === "listen"){
     // Hear + read the native script; choose what it means.
-    kind.textContent = "What does this mean?";
+    kind.textContent = badge + "What does this mean?";
     main.textContent = word.native;
     main.classList.add("native");
     sub.textContent = "Listen, then tap the meaning";
     speakBtn.hidden = false;
-    autoBtn.hidden  = false;
   }else{ // pronounce
     // Read the English; pick the correct written form (hear each first).
-    kind.textContent = "Say it in " + L.name;
+    kind.textContent = badge + "Say it in " + L.name;
     main.textContent = word.en;
     sub.textContent = "Tap 🔊 to hear each, then choose";
     speakBtn.hidden = true;   // prompt is English — nothing to pronounce yet
-    autoBtn.hidden  = true;
   }
 
+  // First encounter is a STUDY trial, not a test: show the memory hint
+  // right away (keyword mnemonics work best at first exposure — Atkinson
+  // & Raugh 1975). Later encounters hide it so the user retrieves first.
   const mn = document.getElementById("mnemo");
-  mn.hidden = true;
-  mn.textContent = "";
-  document.getElementById("hintBtn").hidden = false;
+  mn.hidden = !isNew;
+  mn.textContent = isNew ? word.mn : "";
+  document.getElementById("hintBtn").hidden = isNew;
+  document.getElementById("echoLine").hidden = true;
   document.getElementById("dislikeBtn").hidden = false;
 
   const grid = document.getElementById("answers");
@@ -915,6 +1016,12 @@ function answer(btn, chosen){
 
   P.answered++;
 
+  // Spaced-repetition bookkeeping: climb a box on success (next review
+  // further out), drop back on a miss (retry within a minute).
+  const key = lastWordKey;
+  const now = Date.now();
+  const s = P.srs[key] || {b:0, d:0};
+
   if(correct){
     btn.classList.add("correct");
     P.streak++;
@@ -922,10 +1029,12 @@ function answer(btn, chosen){
     const bonus = Math.min(P.streak, 5);
     P.score += 10 + bonus;
 
-    const key = lastWordKey;
     P.correctCounts[key] = (P.correctCounts[key] || 0) + 1;
+    s.b = Math.min(s.b + 1, INTERVALS.length - 1);
+    s.d = now + INTERVALS[s.b];
+
     let mastered = false;
-    if(P.correctCounts[key] >= 3 && !P.mastered[key]){
+    if(s.b >= MASTER_BOX && !P.mastered[key]){
       P.mastered[key] = true;
       mastered = true;
     }
@@ -941,9 +1050,12 @@ function answer(btn, chosen){
     btn.classList.remove("dim");
     if(rightBtn){ rightBtn.classList.add("correct"); rightBtn.classList.remove("dim"); }
     P.streak = 0;
+    s.b = 0;
+    s.d = now + INTERVALS[0];   // back in ~30 s for relearning
     sfxWrong();
-    setFeedback("✗ It's " + word[answerField] + " (" + word.roman + " — " + word.en + ")", "bad");
+    setFeedback("✗ It's " + word.native + " — " + word.roman + " — " + word.en + " · it'll come right back", "bad");
   }
+  P.srs[key] = s;
 
   save();
   updateHeader();
@@ -955,7 +1067,14 @@ function answer(btn, chosen){
   mn.hidden = false;
   document.getElementById("hintBtn").hidden = true;
 
-  setTimeout(newQuestion, correct ? 2200 : 3600);
+  // Production effect: hearing AND saying a word beats reading it — echo
+  // the audio and nudge the user to repeat it out loud.
+  const echo = document.getElementById("echoLine");
+  echo.textContent = "🗣 Repeat it aloud: " + word.roman;
+  echo.hidden = false;
+  if(P.autoplay && speechUnlocked) speak(word.native, langInfo().locale);
+
+  setTimeout(newQuestion, correct ? 2600 : 3800);
 }
 
 function setFeedback(msg, cls, star){
@@ -1057,6 +1176,9 @@ function openSheet(){
   document.getElementById("stScore").textContent = P.score;
   document.getElementById("stBest").textContent = P.bestStreak;
   document.getElementById("stMastered").textContent = Object.keys(P.mastered).length;
+  const now = Date.now();
+  document.getElementById("stDue").textContent =
+    Object.values(P.srs).filter(s => s.d <= now).length;
   document.getElementById("stAnswered").textContent = P.answered;
   const dislikedCount = Object.keys(P.disliked).length;
   document.getElementById("stDisliked").textContent = dislikedCount;
@@ -1119,7 +1241,7 @@ document.getElementById("autoBtn").addEventListener("click", () => {
 /* Dislike — hide a phrase this user won't need, then move on. */
 document.getElementById("dislikeBtn").addEventListener("click", () => {
   if(!question) return;
-  P.disliked[wordKey(curLang, curModule, question.word)] = true;
+  P.disliked[keyOf(question.word)] = true;
   save();
   renderModuleChips();
   setFeedback("Hidden 👎 — you can restore it in ⚙︎", "");
@@ -1139,12 +1261,49 @@ document.getElementById("hintBtn").addEventListener("click", () => {
 });
 
 /* =====================================================================
-   BROWSE / SEARCH — look up any phrase across all three languages and
-   hear them back-to-back to compare pronunciations.
+   OCCASION / REGISTER — when a phrase is appropriate (formal/informal).
+   Korean and Japanese encode politeness grammatically, so most entries
+   can be classified from their endings; a small override map covers the
+   phrases where the register is worth calling out specifically.
+===================================================================== */
+const OCCASION_OVERRIDES = {
+  "zh|你好":"Standard polite greeting — works with anyone; friends often just say 'hāi'.",
+  "zh|不好意思":"Casual-polite — the everyday 'excuse me' for getting attention or squeezing past; lighter than 对不起.",
+  "zh|对不起":"A genuine apology — stronger than 不好意思; use it when you've actually caused trouble.",
+  "zh|买单":"Casual — the normal way to call for the bill in any restaurant.",
+  "ko|네":"Polite — the all-purpose yes; safe with everyone.",
+  "ja|ありがとう":"Casual-friendly — add ございます (gozaimasu) to make it fully polite for staff and strangers.",
+  "ja|さようなら":"Neutral but a little formal and final — friends usually say じゃね (ja ne).",
+  "ja|ごめんなさい":"Sincere everyday apology — for bumps and mix-ups; すみません also works.",
+  "ja|はい":"Polite — fine in every situation.",
+  "ja|いいえ":"Polite — fine in every situation."
+};
+function occasionFor(langId, w){
+  const o = OCCASION_OVERRIDES[langId + "|" + w.native];
+  if(o) return o;
+  if(langId === "ko"){
+    if(/니다[?？!！.]?\s*$/.test(w.native) || w.native.includes("습니다"))
+      return "Formal-polite (-hamnida) — the safest register: staff, elders, strangers.";
+    if(/요[?？!！.]?\s*$/.test(w.native))
+      return "Polite everyday (-yo) — the standard traveler register, fine with everyone.";
+    return "Neutral — fine in any situation.";
+  }
+  if(langId === "ja"){
+    if(/(です|ます|ません|ました|ください)/.test(w.native))
+      return "Polite (desu/masu) — appropriate with anyone, from shopkeepers to officials.";
+    return "Neutral — fine in most travel situations.";
+  }
+  return "Neutral — Mandarin doesn't conjugate for politeness; fine with anyone.";
+}
+
+/* =====================================================================
+   BROWSE / SEARCH — look up any phrase, filter by language, hear entries
+   back-to-back, and tap a row for the full detail view.
 ===================================================================== */
 const browseVeil = document.getElementById("browseVeil");
 const browseInput = document.getElementById("browseInput");
 const browseResults = document.getElementById("browseResults");
+let browseLang = "all";
 
 function allEntries(){
   const out = [];
@@ -1153,10 +1312,26 @@ function allEntries(){
   }));
   return out;
 }
+function renderBrowseFilters(){
+  const wrap = document.getElementById("browseFilters");
+  wrap.innerHTML = "";
+  [{id:"all", label:"All"}, ...LANGS.map(L => ({id:L.id, label:L.glyph + " " + L.name}))].forEach(f => {
+    const b = document.createElement("button");
+    b.className = "b-filter" + (browseLang === f.id ? " active" : "");
+    b.textContent = f.label;
+    b.addEventListener("click", () => {
+      browseLang = f.id;
+      renderBrowseFilters();
+      renderBrowse(browseInput.value);
+    });
+    wrap.appendChild(b);
+  });
+}
 function renderBrowse(query){
   const q = (query || "").trim().toLowerCase();
   browseResults.innerHTML = "";
   let entries = allEntries();
+  if(browseLang !== "all") entries = entries.filter(({L}) => L.id === browseLang);
   if(q){
     entries = entries.filter(({w}) =>
       w.en.toLowerCase().includes(q) ||
@@ -1170,7 +1345,7 @@ function renderBrowse(query){
     browseResults.appendChild(e);
     return;
   }
-  entries.slice(0, 80).forEach(({L, w}) => {
+  entries.slice(0, 100).forEach(({L, w}) => {
     const row = document.createElement("div");
     row.className = "browse-row";
     row.innerHTML =
@@ -1180,11 +1355,12 @@ function renderBrowse(query){
     row.querySelector(".b-native").textContent = w.native;
     row.querySelector(".b-en").textContent = w.en;
     row.querySelector(".b-roman").textContent = w.roman;
+    row.addEventListener("click", () => openDetail(L, w));
     const sp = document.createElement("button");
     sp.className = "b-speak";
     sp.textContent = "🔊";
     sp.setAttribute("aria-label", "Hear " + w.en + " in " + L.name);
-    sp.addEventListener("click", () => { getCtx(); unlockSpeech(); speak(w.native, L.locale); });
+    sp.addEventListener("click", e => { e.stopPropagation(); getCtx(); unlockSpeech(); speak(w.native, L.locale); });
     row.appendChild(sp);
     browseResults.appendChild(row);
   });
@@ -1192,6 +1368,7 @@ function renderBrowse(query){
 function openBrowse(){
   getCtx(); unlockSpeech();
   browseInput.value = "";
+  renderBrowseFilters();
   renderBrowse("");
   browseVeil.classList.add("open");
 }
@@ -1199,6 +1376,62 @@ document.getElementById("browseBtn").addEventListener("click", openBrowse);
 document.getElementById("closeBrowse").addEventListener("click", () => browseVeil.classList.remove("open"));
 browseVeil.addEventListener("click", e => { if(e.target === browseVeil) browseVeil.classList.remove("open"); });
 browseInput.addEventListener("input", () => renderBrowse(browseInput.value));
+
+/* =====================================================================
+   WORD DETAIL VIEW — hint, pronunciation, occasion, progress, actions.
+   Opens on top of Browse; Back returns to the list.
+===================================================================== */
+const detailVeil = document.getElementById("detailVeil");
+let detailEntry = null;   // {L, w}
+
+function humanizeDelta(ms){
+  if(ms <= 0) return "due now";
+  const min = Math.round(ms / 60e3);
+  if(min < 60) return "in " + Math.max(1, min) + " min";
+  const h = Math.round(min / 60);
+  if(h < 48) return "in " + h + " h";
+  return "in " + Math.round(h / 24) + " days";
+}
+function renderDetail(){
+  const {L, w} = detailEntry;
+  const key = keyOf(w, L.id);
+  document.getElementById("dNative").textContent = w.native;
+  document.getElementById("dRoman").textContent = w.roman + " · " + L.romanLabel;
+  document.getElementById("dEn").textContent = w.en + " — " + L.name;
+  document.getElementById("dHint").textContent = w.mn;
+  document.getElementById("dOccasion").textContent = occasionFor(L.id, w);
+
+  const s = P.srs[key];
+  let prog;
+  if(P.mastered[key])      prog = "★ Mastered — maintenance review " + humanizeDelta(s ? s.d - Date.now() : 0) + ".";
+  else if(s)               prog = "Learning — stage " + s.b + " of " + MASTER_BOX + ", next review " + humanizeDelta(s.d - Date.now()) + ".";
+  else                     prog = "Not seen yet — it'll show up in the game.";
+  document.getElementById("dProgress").textContent = prog;
+
+  const hideBtn = document.getElementById("dHide");
+  hideBtn.textContent = P.disliked[key] ? "↩︎ Restore" : "👎 Hide";
+}
+function openDetail(L, w){
+  detailEntry = {L, w};
+  renderDetail();
+  detailVeil.classList.add("open");
+}
+document.getElementById("dSpeak").addEventListener("click", () => {
+  if(!detailEntry) return;
+  getCtx(); unlockSpeech();
+  speak(detailEntry.w.native, detailEntry.L.locale);
+});
+document.getElementById("dHide").addEventListener("click", () => {
+  if(!detailEntry) return;
+  const key = keyOf(detailEntry.w, detailEntry.L.id);
+  if(P.disliked[key]) delete P.disliked[key];
+  else P.disliked[key] = true;
+  save();
+  renderModuleChips();
+  renderDetail();
+});
+document.getElementById("closeDetail").addEventListener("click", () => detailVeil.classList.remove("open"));
+detailVeil.addEventListener("click", e => { if(e.target === detailVeil) detailVeil.classList.remove("open"); });
 
 // Any first touch anywhere also unlocks both audio systems, so the very
 // first Speak tap plays immediately instead of only unlocking.
