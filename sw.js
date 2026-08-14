@@ -2,7 +2,7 @@
    Bump CACHE_VERSION whenever you edit any file, so installed phones update.
    (The HTML is served network-first, so content updates even without a bump —
    but bumping still guarantees a clean re-install of every cached asset.) */
-const CACHE_VERSION = "layover-v4";
+const CACHE_VERSION = "layover-v5";
 const ASSETS = [
   "./",
   "./index.html",
