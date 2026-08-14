@@ -1,0 +1,20 @@
+# Dependencies (the app itself has none — this is for tooling only)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test / tooling artifacts
+tests/artifacts/
+coverage/
+test-results/
+playwright-report/
+.cache/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
