@@ -1,0 +1,453 @@
+  /* ============ CABIN-NIGHT TOKEN SYSTEM ============ */
+  :root{
+    --bg:#0C1120;          /* deep cabin night */
+    --panel:#161D31;
+    --panel-2:#1D2540;
+    --line:#28324F;
+    --ink:#F4F6FC;
+    --muted:#8B94AF;
+    --amber:#FFC466;       /* reading-light amber for score */
+    --good:#3DDC97;
+    --bad:#FF6B6B;
+    --accent:#FF6A55;      /* swapped per language */
+    --accent-soft:rgba(255,106,85,.14);
+    --radius:18px;
+    --sat:env(safe-area-inset-top,0px);
+    --sab:env(safe-area-inset-bottom,0px);
+    --app-w:520px;         /* phone-like content column on wide screens */
+    --app-pad:16px;        /* horizontal gutter of header / main / answers */
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  html{background:var(--bg)}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    display:flex;flex-direction:column;
+    min-height:100dvh;
+    user-select:none;-webkit-user-select:none;
+    touch-action:manipulation;
+    overflow:hidden;
+  }
+  /* On wide screens keep the phone-like column centred; --bg fills the sides.
+     Below the breakpoint these rules are inert, so phones are unaffected. */
+  header,main,.answers{
+    width:100%;
+    max-width:calc(var(--app-w) + var(--app-pad) * 2);
+    margin-inline:auto;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;touch-action:manipulation}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+  /* ============ HEADER ============ */
+  header{
+    padding:calc(10px + var(--sat)) var(--app-pad) 10px;
+    background:linear-gradient(180deg,#101730 0%,var(--bg) 100%);
+    border-bottom:1px solid var(--line);
+    flex:none;
+  }
+  .hdr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+  .brand{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;min-width:0}
+  .brand b{color:var(--accent)}
+  .stats{display:flex;gap:8px;align-items:center;flex:none}
+  .pill{
+    display:flex;align-items:center;gap:5px;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:6px 12px;
+    font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+  }
+  .pill .lbl{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .pill .val{color:var(--amber)}
+  .pill.streak .val{color:var(--ink)}
+  .pill.streak.hot .val{color:var(--accent)}
+  .icon-btn{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:var(--muted);flex:none;
+  }
+  .icon-btn:active{transform:scale(.94)}
+
+  /* ============ LANGUAGE + MODULE SELECTORS ============ */
+  .lang-tabs{display:flex;gap:8px;margin-top:12px}
+  .lang-tab{
+    flex:1;padding:10px 4px;border-radius:14px;
+    background:var(--panel);border:1.5px solid var(--line);
+    text-align:center;transition:border-color .15s,background .15s;
+  }
+  .lang-tab .glyph{display:block;font-size:20px;line-height:1.2}
+  .lang-tab .name{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-top:2px}
+  .lang-tab.active{background:var(--accent-soft);border-color:var(--accent)}
+  .lang-tab.active .name{color:var(--ink)}
+  .modules{
+    display:flex;gap:8px;margin-top:10px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;padding-bottom:2px;
+  }
+  .modules::-webkit-scrollbar{display:none}
+  .mod-chip{
+    flex:none;padding:8px 14px;border-radius:999px;
+    background:var(--panel);border:1.5px solid var(--line);
+    font-size:13px;font-weight:600;color:var(--muted);
+    display:flex;align-items:center;gap:7px;transition:border-color .15s;
+  }
+  .mod-chip.active{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+  .mod-chip .count{font-size:11px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+
+  /* ============ MODE TABS ============ */
+  .mode-tabs{display:flex;gap:8px;margin-top:10px;background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:4px}
+  .mode-tab{
+    flex:1;padding:9px 4px;border-radius:10px;
+    font-size:13px;font-weight:700;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .15s,color .15s;
+  }
+  .mode-tab.active{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--accent)}
+
+  /* ============ MAIN QUESTION AREA ============ */
+  main{
+    flex:1;display:flex;flex-direction:column;
+    padding:14px var(--app-pad) 8px;min-height:0;overflow:hidden;
+  }
+  .card{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    background:
+      radial-gradient(60% 55% at 50% 30%, var(--accent-soft) 0%, transparent 70%),
+      var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 16px;position:relative;min-height:0;text-align:center;
+    /* The stack is centred with auto margins instead of justify-content:center:
+       identical when it fits, but when it does not the overflow goes to the
+       bottom only, so it stays scrollable instead of being clipped away
+       (justify-content:center makes the overflowing top unreachable). */
+    overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  }
+  .card > :first-child{margin-top:auto}
+  .card > :last-child{margin-bottom:auto}
+  .prompt-kind{
+    font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:10px;
+  }
+  .prompt-main{
+    font-weight:700;line-height:1.15;
+    font-size:clamp(26px,9.5vw,52px);
+    overflow-wrap:anywhere;
+  }
+  .prompt-main.native{font-size:clamp(34px,12vw,64px)}
+  .prompt-sub{margin-top:8px;font-size:15px;color:var(--muted)}
+  .mnemo{
+    margin-top:12px;max-width:36ch;
+    font-size:14px;line-height:1.5;font-style:italic;
+    color:var(--amber);
+  }
+  .mnemo::before{content:"💡 ";font-style:normal}
+  .btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+  .speak-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    border-radius:999px;padding:11px 20px;
+    font-size:14px;font-weight:700;color:var(--ink);
+  }
+  .speak-btn:active{transform:scale(.96);border-color:var(--accent)}
+  .speak-btn[hidden]{display:none}
+  .speak-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .speak-btn.speaking .dot{animation:pulse .5s infinite alternate}
+  @keyframes pulse{from{transform:scale(.7);opacity:.5}to{transform:scale(1.3);opacity:1}}
+  .speak-btn.toggle{padding:11px 16px}
+  .speak-btn.toggle[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .speak-btn.toggle[aria-pressed="false"]{opacity:.6}
+  .speak-btn.dislike{padding:11px 15px}
+  .speak-btn.dislike:active{border-color:var(--bad)}
+
+  /* option speak buttons (Say-it mode) */
+  .ans{position:relative}
+  .ans-speak{
+    position:absolute;top:6px;right:6px;
+    width:30px;height:30px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;color:var(--accent);z-index:2;
+  }
+  .ans-speak:active{transform:scale(.9)}
+  .ans.has-speak{padding-top:22px}
+
+  /* boarding-pass perforation */
+  .perf{
+    flex:none;height:14px;margin:0 26px;position:relative;
+  }
+  .perf::before{
+    content:"";position:absolute;left:0;right:0;top:50%;
+    border-top:2px dashed var(--line);
+  }
+
+  /* ============ FEEDBACK BANNER ============ */
+  .feedback{
+    flex:none;min-height:44px;display:flex;align-items:center;justify-content:center;
+    gap:8px;font-size:14px;font-weight:700;padding:4px 12px;text-align:center;
+    color:var(--muted);
+  }
+  .feedback.good{color:var(--good)}
+  .feedback.bad{color:var(--bad)}
+  .feedback .master{color:var(--amber)}
+
+  /* ============ ANSWER GRID ============ */
+  .answers{
+    flex:none;
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    padding:0 var(--app-pad) calc(14px + var(--sab));
+  }
+  .ans{
+    min-height:72px;padding:12px 10px;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    font-size:clamp(15px,4.6vw,20px);font-weight:700;line-height:1.25;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    overflow-wrap:anywhere;transition:transform .08s,border-color .12s,background .12s;
+  }
+  .ans.native-text{font-size:clamp(18px,6vw,26px)}
+  .ans:active{transform:scale(.97)}
+  .ans.correct{background:rgba(61,220,151,.16);border-color:var(--good);color:var(--good)}
+  .ans.wrong{background:rgba(255,107,107,.14);border-color:var(--bad);color:var(--bad)}
+  .ans.dim{opacity:.38}
+  .ans:disabled{cursor:default}
+
+  /* shake on wrong */
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .shake{animation:shake .22s ease-in-out 2}
+
+  /* ============ SETTINGS SHEET ============ */
+  .sheet-veil{
+    position:fixed;inset:0;background:rgba(5,8,18,.7);
+    display:none;align-items:flex-end;justify-content:center;z-index:50;
+  }
+  .sheet-veil.open{display:flex}
+  .sheet{
+    width:100%;max-width:560px;background:var(--panel);
+    border-radius:22px 22px 0 0;border-top:1px solid var(--line);
+    padding:20px 20px calc(24px + var(--sab));
+    /* never grow past the viewport: scroll instead of hiding content off-screen */
+    max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .sheet h2{font-size:17px;margin-bottom:4px}
+  .sheet p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+  .sheet .row{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .sheet .row b{color:var(--amber);font-variant-numeric:tabular-nums}
+  .sheet-btn{
+    width:100%;margin-top:14px;padding:14px;border-radius:14px;
+    font-size:15px;font-weight:700;text-align:center;
+  }
+  .sheet-btn.danger{background:rgba(255,107,107,.12);border:1.5px solid var(--bad);color:var(--bad)}
+  .sheet-btn.plain{background:var(--panel-2);border:1.5px solid var(--line)}
+  .app-version{
+    margin-top:16px;text-align:center;
+    font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted);
+  }
+
+  /* ============ BROWSE SHEET ============ */
+  .browse-sheet{max-height:88dvh;display:flex;flex-direction:column}
+  .browse-input{
+    width:100%;margin-bottom:12px;padding:13px 14px;
+    background:var(--panel-2);border:1.5px solid var(--line);border-radius:12px;
+    color:var(--ink);font-size:16px;
+  }
+  .browse-input:focus{outline:none;border-color:var(--accent)}
+  .browse-results{
+    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    min-height:0;margin:0 -4px;padding:0 4px;
+  }
+  .browse-row{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 4px;border-bottom:1px solid var(--line);
+  }
+  .browse-row .b-glyph{
+    flex:none;width:34px;height:34px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:700;background:var(--panel-2);border:1px solid var(--line);
+  }
+  .browse-row .b-text{flex:1;min-width:0}
+  .browse-row .b-native{font-size:18px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+  .browse-row .b-sub{font-size:12px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+  .browse-row .b-sub .b-en{color:var(--ink)}
+  .browse-row .b-speak{
+    flex:none;width:40px;height:40px;border-radius:50%;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:var(--accent);
+  }
+  .browse-row .b-speak:active{transform:scale(.92);border-color:var(--accent)}
+  .browse-empty{text-align:center;color:var(--muted);font-size:14px;padding:24px 0}
+  .browse-filters{display:flex;gap:8px;margin-bottom:12px}
+  .b-filter{
+    flex:1;padding:9px 4px;border-radius:999px;
+    background:var(--panel-2);border:1.5px solid var(--line);
+    font-size:13px;font-weight:700;color:var(--muted);
+  }
+  .b-filter.active{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+
+  /* ============ WORD DETAIL SHEET ============ */
+  #detailVeil{z-index:60}
+  .detail-sheet{max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;text-align:center}
+  .d-native{font-size:44px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
+  .d-roman{font-size:18px;color:var(--amber);font-weight:700;margin-top:6px}
+  .d-en{font-size:15px;color:var(--muted);margin-top:4px;margin-bottom:14px}
+  .d-row{
+    text-align:left;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:12px;padding:11px 13px;margin-top:8px;
+    font-size:14px;line-height:1.5;
+  }
+  .d-row .d-lbl{
+    display:block;font-size:10px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:3px;
+  }
+  .d-row.hint{color:var(--amber);font-style:italic}
+  .d-row.hint .d-lbl{font-style:normal}
+  .d-actions{display:flex;gap:10px;margin-top:14px}
+  .d-actions .sheet-btn{flex:1;margin-top:0}
+
+  /* say-it-aloud nudge (production effect) */
+  .echo{margin-top:12px;font-size:14px;font-weight:700;color:var(--good)}
+  .echo[hidden]{display:none}
+
+  /* ============ RESPONSIVE: SHORT VIEWPORTS ============
+     The layout is 100dvh with overflow:hidden, so anything that does not fit
+     is simply invisible. These blocks shrink the chrome so the prompt, the
+     button row and all four answers always fit. */
+
+  /* --- mid-short: iPhone SE / 8 portrait and similar (<=700px tall) --- */
+  @media (max-height:700px){
+    header{padding-top:calc(6px + var(--sat));padding-bottom:6px}
+    .lang-tabs{margin-top:8px}
+    .lang-tab{padding:7px 4px}
+    .lang-tab .glyph{font-size:18px}
+    .mode-tabs{margin-top:8px}
+    .mode-tab{padding:7px 4px}
+    .modules{margin-top:8px}
+    .mod-chip{padding:6px 12px}
+
+    main{padding:10px var(--app-pad) 6px}
+    .card{padding:12px 12px}
+    .prompt-kind{margin-bottom:6px}
+    .prompt-main{font-size:clamp(24px,8vw,44px)}
+    .prompt-main.native{font-size:clamp(30px,10vw,52px)}
+    .prompt-sub{margin-top:6px;font-size:14px}
+    .mnemo{margin-top:8px;font-size:13px;line-height:1.4}
+    .echo{margin-top:8px;font-size:13px}
+    .btn-row{margin-top:10px;gap:8px}
+    .speak-btn{padding:9px 16px}
+    .speak-btn.toggle,.speak-btn.dislike{padding:9px 13px}
+    .perf{height:10px}
+    .feedback{min-height:34px}
+    .ans{min-height:60px}
+  }
+
+  /* --- very short: phones in landscape (<=450px tall) --- */
+  @media (max-height:450px){
+    header{padding-top:calc(4px + var(--sat));padding-bottom:5px}
+    .lang-tabs{margin-top:5px}
+    .lang-tab{padding:4px 4px}
+    .lang-tab .glyph{font-size:15px;line-height:1.1}
+    .lang-tab .name{font-size:10px;margin-top:0}
+    .mode-tabs{margin-top:5px;padding:3px}
+    .mode-tab{padding:5px 4px;font-size:12px}
+    .modules{margin-top:5px}
+    .mod-chip{padding:4px 10px;font-size:12px}
+    .mod-chip .count{font-size:10px}
+
+    main{padding:6px var(--app-pad) 4px}
+    .card{padding:8px 10px;border-radius:14px}
+    .prompt-kind{font-size:10px;margin-bottom:2px}
+    .prompt-main{font-size:clamp(20px,6.5vh,30px)}
+    .prompt-main.native{font-size:clamp(24px,8.5vh,36px)}
+    .prompt-sub{margin-top:2px;font-size:11px}
+    /* the mnemonic, the echo nudge and the perforation are the first things
+       to go when there is no vertical room for them */
+    .mnemo,.echo,.perf{display:none}
+    .btn-row{margin-top:6px;gap:6px}
+    .speak-btn{padding:7px 12px;font-size:13px}
+    .speak-btn.toggle,.speak-btn.dislike{padding:7px 10px}
+    .feedback{min-height:24px;font-size:12px;padding:2px 10px}
+
+    .answers{gap:7px;padding:0 var(--app-pad) calc(7px + var(--sab))}
+    .ans{min-height:42px;padding:6px 8px;border-radius:14px;font-size:clamp(14px,3.6vh,18px)}
+    .ans.native-text{font-size:clamp(16px,4.6vh,22px)}
+    .ans.has-speak{padding-top:16px}
+    .ans-speak{width:26px;height:26px;top:3px;right:3px;font-size:12px}
+
+    .sheet{padding:14px 16px calc(14px + var(--sab));max-height:96dvh}
+    .sheet h2{font-size:16px}
+    .sheet p{margin-bottom:8px}
+    .sheet .row{padding:6px 0}
+    .sheet-btn{margin-top:8px;padding:10px;font-size:14px}
+    .app-version{margin-top:10px}
+    .browse-sheet,.detail-sheet{max-height:96dvh}
+    .browse-input{margin-bottom:8px;padding:9px 12px}
+    .browse-filters{margin-bottom:8px}
+    .b-filter{padding:7px 4px}
+    .d-native{font-size:28px}
+    .d-roman{font-size:16px;margin-top:2px}
+    .d-en{margin-bottom:8px}
+    .d-row{padding:8px 11px;margin-top:6px}
+    .d-actions{margin-top:8px}
+  }
+
+  /* --- wide screens: the content column is pinned at var(--app-w), so the
+         viewport-relative type scale would only make the prompt wrap. Lock it
+         to the size it has on a phone instead. --- */
+  @media (min-width:552px) and (min-height:451px){
+    .prompt-main{font-size:40px}
+    .prompt-main.native{font-size:42px}
+  }
+
+  /* --- short AND narrow: no room at all for the instruction line --- */
+  @media (max-height:450px) and (max-width:599px){
+    .prompt-sub{display:none}
+  }
+
+  /* --- short AND wide (phones in landscape): the answer grid moves next to
+         the card, so both the prompt and all four answers stay comfortable --- */
+  @media (max-height:450px) and (min-width:600px){
+    body{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      grid-template-rows:auto minmax(0,1fr);
+      width:100%;max-width:900px;margin-inline:auto;
+    }
+    header{grid-column:1/-1;max-width:none}
+    main{grid-column:1;grid-row:2;max-width:none;padding:6px 8px 6px var(--app-pad)}
+    .answers{
+      grid-column:2;grid-row:2;max-width:none;align-content:center;
+      padding:0 var(--app-pad) calc(6px + var(--sab)) 8px;
+    }
+    .ans{min-height:48px}
+    .prompt-main{font-size:clamp(22px,8vh,34px)}
+    .prompt-main.native{font-size:clamp(26px,11vh,42px)}
+  }
+
+  /* --- very narrow: iPhone SE 1st gen and similar (<=359px wide) --- */
+  @media (max-width:359px){
+    :root{--app-pad:12px}
+    .brand{font-size:11px;letter-spacing:.08em}
+    .stats{gap:6px}
+    .pill{padding:5px 9px;font-size:13px}
+    .pill .lbl{font-size:9px}
+    .icon-btn{width:40px;height:40px}   /* keep the tap target >=40px */
+    .btn-row{gap:8px;margin-top:8px}
+    .speak-btn{padding:9px 13px;font-size:13px}
+    .speak-btn.toggle,.speak-btn.dislike{padding:9px 11px}
+    /* Everything wraps onto more lines down here and the card is only ~170px
+       tall, so trade the instruction line and some type scale for room. */
+    .card{padding:8px}
+    .prompt-kind{font-size:10px;margin-bottom:3px}
+    .prompt-sub{display:none}
+    .prompt-main{font-size:clamp(22px,8vw,36px)}
+    .prompt-main.native{font-size:clamp(26px,9vw,44px)}
+    .mnemo{margin-top:6px;font-size:11px;line-height:1.3}
+    .ans{min-height:48px;padding:10px 8px}
+    .sheet{padding-left:16px;padding-right:16px}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }

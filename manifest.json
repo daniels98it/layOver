@@ -1,7 +1,11 @@
 {
   "name": "Layover — Survival Phrase Trainer",
   "short_name": "Layover",
-  "description": "Learn survival Mandarin, Korean, and Japanese offline.",
+  "description": "Offline survival-phrase trainer for Chinese, Korean and Japanese, built around spaced repetition. Learn the words you actually need on a layover — no account, no network.",
+  "categories": ["education", "travel"],
+  "lang": "en",
+  "dir": "ltr",
+  "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Layover is a zero-build static PWA: no package.json, no node_modules, no
+# bundler. CI therefore only does two things — parse every script, and drive
+# the real app in a real browser.
+
+jobs:
+  syntax:
+    name: syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: node --check every script
+        run: |
+          fail=0
+          count=0
+          targets=""
+          for dir in js tests; do
+            if [ -d "$dir" ]; then
+              targets="$targets $(find "$dir" -type f \( -name '*.js' -o -name '*.mjs' \) | sort)"
+            fi
+          done
+          if [ -f sw.js ]; then targets="$targets sw.js"; fi
+          for f in $targets; do
+            count=$((count + 1))
+            if node --check "$f"; then
+              echo "ok   $f"
+            else
+              echo "FAIL $f"
+              fail=1
+            fi
+          done
+          if [ "$count" -eq 0 ]; then
+            echo "No JS files found under js/ or tests/, and no sw.js — nothing to check."
+          else
+            echo "Checked $count file(s)."
+          fi
+          exit $fail
+
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Chromium + Playwright
+        run: |
+          npx --yes playwright@latest install --with-deps chromium
+          npm install -g playwright@latest
+          echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
+
+      - name: Smoke test
+        run: node tests/smoke.mjs
+
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-failure
+          path: tests/artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
